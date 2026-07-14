@@ -1,0 +1,44 @@
+{
+  "facilities": [
+    {
+      "name": "SPCA Lucknow",
+      "type": "Animal Shelter",
+      "lat": 26.8553,
+      "lng": 80.9520,
+      "phone": "+91-522-2620196",
+      "available24h": false
+    },
+    {
+      "name": "Lucknow Municipal Corporation Animal Helpline",
+      "type": "Government Animal Control",
+      "lat": 26.8467,
+      "lng": 80.9462,
+      "phone": "+91-522-2630000",
+      "available24h": true
+    },
+    {
+      "name": "Pet Care Veterinary Clinic",
+      "type": "Veterinary Clinic",
+      "lat": 26.8417,
+      "lng": 80.9308,
+      "phone": "+91-9235567890",
+      "available24h": false
+    },
+    {
+      "name": "Prani Mitra Animal Hospital",
+      "type": "Animal Hospital",
+      "lat": 26.8700,
+      "lng": 80.9600,
+      "phone": "+91-9415000000",
+      "available24h": true
+    },
+    {
+      "name": "Animal Aid Lucknow Partner",
+      "type": "Animal Rescue NGO",
+      "lat": 26.8320,
+      "lng": 80.9100,
+      "phone": "+91-1800-2009977",
+      "available24h": true
+    }
+  ]
+}
