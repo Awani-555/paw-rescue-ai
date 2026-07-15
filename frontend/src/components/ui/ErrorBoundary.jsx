@@ -27,7 +27,7 @@ export default class ErrorBoundary extends Component {
       return (
         <Card className="error-boundary-card">
           <h2>Something went wrong</h2>
-          <p>We hit a snag loading this page. Your data is safe — try again.</p>
+          <p>We hit a snag loading this page. Your data is safe, try again.</p>
           <Button variant="primary" onClick={this.handleRetry}>
             Try again
           </Button>

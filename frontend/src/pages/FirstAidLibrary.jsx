@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import Card from '../components/ui/Card'
 import Badge from '../components/ui/Badge'
+import BackButton from '../components/ui/BackButton'
 import FirstAidCard from '../components/reporter/FirstAidCard'
 import { firstAidData, filterFirstAid } from '../utils/firstAidData'
 
@@ -16,9 +17,7 @@ export default function FirstAidLibrary({ onBack }) {
   return (
     <div className="page-container">
       <div className="step-header">
-        <button className="step-back" onClick={onBack}>
-          ←
-        </button>
+        <BackButton onClick={onBack} />
         <div className="step-title">
           <h2>First Aid Guide</h2>
           <p>Works completely offline</p>

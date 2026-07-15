@@ -3,7 +3,7 @@ export default function FirstAidCard({ steps, doNot }) {
 
   return (
     <div className="first-aid-card">
-      <h3>⚕️ Immediate first aid</h3>
+      <h3>Immediate first aid</h3>
       <ol className="first-aid-steps">
         {steps.map((step, idx) => (
           <li key={idx}>{step}</li>

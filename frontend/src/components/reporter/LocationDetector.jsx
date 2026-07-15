@@ -5,13 +5,13 @@ export default function LocationDetector({ geo, onManualLocation }) {
   const { loading, error, status } = geo
 
   if (loading) {
-    return <p className="location-status-line">📍 Getting your location…</p>
+    return <p className="location-status-line">Getting your location...</p>
   }
 
   if (status === 'denied') {
     return (
       <div>
-        <p className="location-status-line denied">📍 {error}</p>
+        <p className="location-status-line denied">{error}</p>
         <input
           type="text"
           className="manual-location-input"
@@ -27,8 +27,8 @@ export default function LocationDetector({ geo, onManualLocation }) {
   }
 
   if (status === 'fallback') {
-    return <p className="location-status-line">📍 {error}</p>
+    return <p className="location-status-line">{error}</p>
   }
 
-  return <p className="location-status-line granted">📍 Location captured</p>
+  return <p className="location-status-line granted">Location captured</p>
 }

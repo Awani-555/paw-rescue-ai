@@ -12,17 +12,20 @@ export default function FacilityCard({ facility, userLocation }) {
         <div>
           <div className="facility-name">{facility.name}</div>
           <div className="facility-type">
-            {facility.type} · {facility.available24h ? '24/7 available' : 'Limited hours'}
+            {facility.type} · {facility.hours || 'Hours not confirmed, call ahead'}
           </div>
+          {facility.address && <div className="facility-address">{facility.address}</div>}
         </div>
         <span className="facility-distance">{formatDistance(facility.distance)}</span>
       </div>
       <div className="facility-actions">
-        <a className="btn btn-secondary" href={`tel:${facility.phone}`}>
-          📞 Call
-        </a>
+        {facility.phone && (
+          <a className="btn btn-secondary" href={`tel:${facility.phone}`}>
+            Call
+          </a>
+        )}
         <a className="btn btn-primary" href={directionsUrl} target="_blank" rel="noopener noreferrer">
-          🗺️ Directions
+          Directions
         </a>
       </div>
     </Card>
