@@ -1,187 +1,162 @@
+# PawRescue AI
 
-🐾 PawRescue AI - Animal Rescue Assistant
+A three-service platform for reporting injured animals: an anonymous reporter flow with AI-assisted triage and offline first aid guidance, and a responder dashboard for NGOs and volunteers to claim and resolve nearby cases.
 
+## Table of contents
 
-An intelligent animal rescue system powered by AI that helps identify injured animals, assess injury severity, and locate nearest rescue facilities.
+- [Features](#features)
+- [Architecture](#architecture)
+- [Prerequisites](#prerequisites)
+- [Installation](#installation)
+- [Running the application](#running-the-application)
+- [Project structure](#project-structure)
+- [API reference](#api-reference)
+- [Known limitations](#known-limitations)
 
-** Table of Contents**
-Features
-Demo
-Architecture
-Prerequisites
-Installation
-Running the Application
-Project Structure
-API Documentation
-Usage Guide
-Troubleshooting
-Contributing
-License
- **Features**
- **AI-Powered Analysis**
-Species Detection: Automatically identifies dogs, cats, birds, and other animals
-Injury Assessment: Analyzes severity levels (Critical, Urgent, Mild)
-Wound Recognition: Detects visible injuries and conditions
-Confidence Scoring: Provides AI confidence percentage for transparency
- **Location Services**
-Auto-Location Detection: Automatically captures user's GPS coordinates
-Nearest Facilities: Shows top 3 closest rescue centers/hospitals
-Distance Calculation: Real-time distance calculation to help centers
-Google Maps Integration: Direct navigation links to facilities
- **Modern UI/UX**
-Glassmorphism Design: Beautiful glass-effect cards
-Smooth Animations: Engaging transitions and micro-interactions
-Responsive Layout: Works on desktop, tablet, and mobile
-Dark Mode: Eye-friendly dark theme with animated gradients
- **Report Management**
-Report History: Track all submitted rescue reports
-Photo Gallery: Visual timeline of rescued animals
-Export Capability: Download reports for record-keeping
-Real-time Updates: Live status of rescue operations
-** Demo**
+## Features
 
-Main Dashboard
+**Reporter flow (no login required)**
+- Photo capture with automatic client-side compression before upload
+- Silent GPS capture with a manual location fallback if permission is denied
+- AI-assisted species and severity triage, with the nearest facilities and first aid steps shown immediately after submission
+- An always-visible SOS action for calling the helpline, sending a location via WhatsApp, or jumping to the nearest facility
+- An offline first aid library, searchable and filterable by species, that works without a network connection
 
-┌─────────────────────────────────────────┐
-│  🐾 PawRescue AI                        │
-│  Saving Lives with Intelligence         │
-└─────────────────────────────────────────┘
-│                                           │
-│  [Upload Photo]  [Analysis Results]      │
-│                                           │
-│  Species: Dog                             │
-│  Severity: Critical 🚨                  │
-│  Confidence: 87.5%                        │
-│                                           │
-│  Nearest Help Centers:                    │
-│  1. Central Animal Hospital (2.3 km)     │
-│  2. Emergency Vet Clinic (3.7 km)        │
-│  3. Rescue Center (5.1 km)               │
-└───────────────────────────────────────────┘
- **Architecture**
-┌──────────────┐       ┌──────────────┐       ┌──────────────┐
-│   Frontend   │◄─────►│   Backend    │◄─────►│  AI Service  │
-│  (React +    │       │  (Node.js +  │       │  (Python +   │
-│   Vite)      │       │   Express)   │       │   FastAPI)   │
-└──────────────┘       └──────────────┘       └──────────────┘
-      │                       │                       │
-      │                       │                       │
-      ▼                       ▼                       ▼
-  Port 5173              Port 5000               Port 8001
-Technology Stack
-Frontend
-React 18.2 - UI Library
-Vite 4.3 - Build Tool
-CSS3 - Styling with animations
-Geolocation API - Location services
-Backend
-Node.js 18+ - Runtime
-Express 4.18 - Web Framework
-Axios - HTTP Client
-CORS - Cross-origin handling
-AI Service
-Python 3.8+ - Language
-FastAPI - API Framework
-Pillow (PIL) - Image Processing
-NumPy - Mathematical Operations
- **Prerequisites**
-Before you begin, ensure you have the following installed:
+**Responder dashboard**
+- Email and password login (JWT-based)
+- A live case feed sorted by severity, then distance, then time reported
+- A map view of active cases (Leaflet)
+- Claim and resolve actions per case
 
-Required Software
-Software	Version	Download Link
-Node.js	18.x or higher	nodejs.org
-Python	3.8 or higher	python.org
-npm	9.x or higher	(included with Node.js)
-pip	Latest	(included with Python)
-System Requirements
-OS: Windows 10+, macOS 10.15+, or Linux
-RAM: Minimum 4GB (8GB recommended)
-Storage: 500MB free space
-Browser: Chrome 90+, Firefox 88+, Safari 14+, or Edge 90+
- **Installation**
-Step 1: Clone the Repository
-bash
-git clone https://github.com/yourusername/pawrescue-ai.git
-cd pawrescue-ai
-Step 2: Install Frontend Dependencies
-bash
-cd frontend
-npm install
-Expected output:
+**Engineering**
+- Progressive Web App: installable, works offline for the first aid library, service worker with network-first API caching and cache-first static assets
+- Consistent `{ success, data }` / `{ success: false, error }` response shape across the API
+- Rate limiting, input sanitization, and coordinate validation on the backend
+- Automated tests: Vitest and React Testing Library on the frontend, Jest and Supertest on the backend
+- GitHub Actions CI: backend tests, frontend tests and build, and GitHub Pages deploy on merge to main
 
-added 245 packages in 15s
-Step 3: Install Backend Dependencies
-bash
-cd ../backend
-npm install
-Expected output:
+## Architecture
 
-added 58 packages in 8s
-Step 4: Install AI Service Dependencies
-bash
-cd ../ai-service
-pip install -r requirements.txt
-Expected output:
+```
+Frontend (React + Vite, PWA)  --POST /api/report-->  Backend (Express)
+                                                            |
+                                              +-------------+-------------+
+                                              |                           |
+                                     AI service (FastAPI)         facilities.json / db.json
+                                     species + severity triage    (Haversine distance)
+```
 
-Successfully installed fastapi-0.104.1 uvicorn-0.24.0 ...
-🎮 Running the Application
-Quick Start (3 Terminal Method)
-Terminal 1: Start AI Service
-bash
+| Service | Port | Stack |
+|---|---|---|
+| Frontend | 5173 (dev) | React 18, Vite, vanilla CSS design tokens |
+| Backend | 5000 | Node.js, Express, JWT auth, Helmet, rate limiting |
+| AI service | 8001 | Python, FastAPI, PyTorch/torchvision (MobileNetV2), Pillow, NumPy |
+
+## Prerequisites
+
+| Software | Version |
+|---|---|
+| Node.js | 20 or higher |
+| npm | 9 or higher |
+| Python | 3.10 or higher |
+| pip | latest |
+
+## Installation
+
+```bash
+git clone <repository-url>
+cd paw-rescue
+```
+
+**AI service**
+```bash
 cd ai-service
-python main.py
-✅ Expected: Uvicorn running on http://0.0.0.0:8001
+python -m venv venv
+venv\Scripts\activate        # on macOS/Linux: source venv/bin/activate
+pip install -r requirements.txt
+```
+This pulls in CPU-only PyTorch/torchvision (a few hundred MB) and downloads MobileNetV2's pretrained weights (~14MB) on first run; expect the first install and first startup to be slower than the other two services.
 
-Terminal 2: Start Backend
-bash
+**Backend**
+```bash
 cd backend
-npm start
-✅ Expected: 🚀 Backend running on http://localhost:5000
+npm install
+cp .env.example .env         # fill in JWT_SECRET with a random string
+```
 
-Terminal 3: Start Frontend
-bash
+**Frontend**
+```bash
 cd frontend
-npm run dev
-✅ Expected: Local: http://localhost:5173/
+npm install
+cp .env.example .env
+```
 
-Accessing the Application
-Open your browser and navigate to:
+## Running the application
 
-http://localhost:5173
-📁 Project Structure
-pawrescue-ai/
-├── 📂 frontend/                 # React Frontend
-│   ├── 📂 src/
-│   │   ├── App.jsx             # Main React component
-│   │   ├── main.jsx            # React entry point
-│   │   └── index.css           # Styles & animations
-│   ├── index.html              # HTML template
-│   ├── package.json            # Frontend dependencies
-│   └── vite.config.js          # Vite configuration
-│
-├── 📂 backend/                  # Node.js Backend
-│   ├── server.js               # Express server
-│   ├── db.json                 # Report database
-│   ├── facilities.json         # Rescue centers data
-│   ├── package.json            # Backend dependencies
-│   └── package-lock.json
-│
-├── 📂 ai-service/               # Python AI Service
-│   ├── main.py                 # FastAPI application
-│   └── requirements.txt        # Python dependencies
-│
-└── 📄 README.md                # This file
+Start each service in its own terminal.
 
-📈 Statistics
-Lines of Code: ~2,500
-Number of Files: 12
-Number of Dependencies: 25
-Supported Languages: 2 (JavaScript, Python)
-Animals Helped: Growing daily! 🐾
-Made with ❤️ by developers who care about animals
+```bash
+# Terminal 1: AI service
+cd ai-service
+python main.py                # http://localhost:8001
 
-⭐ Star this repo if you found it helpful!
+# Terminal 2: Backend
+cd backend
+npm start                     # http://localhost:5000
 
-🐾 Together, we can save more lives!
+# Terminal 3: Frontend
+cd frontend
+npm run dev                   # http://localhost:5173
+```
 
- 
+Open http://localhost:5173 in a browser. The responder dashboard is reachable from the "Responder Login" link in the top-right corner; it requires registering an account first, there is no seed account.
+
+## Project structure
+
+```
+paw-rescue/
+  frontend/
+    public/                   manifest, service worker, icons
+    src/
+      components/
+        ui/                   Button, Card, Badge, Spinner, ErrorBoundary
+        reporter/              camera capture, location, first aid card, SOS
+        responder/              login, case feed, case card, map
+      pages/                   ReporterPage, ResponderPage, FirstAidLibrary
+      hooks/                   useGeolocation, useCamera, useOffline
+      utils/                   api client, first aid data, formatters
+      styles/                  design tokens, global styles
+  backend/
+    server.js
+    middleware/                auth, sanitize, request logger
+    routes/                    auth, cases
+    utils/                     db, distance, response helpers
+    facilities.json
+  ai-service/
+    main.py
+    requirements.txt
+  .github/workflows/ci.yml
+```
+
+## API reference
+
+All responses use `{ "success": true, "data": { ... } }` on success or `{ "success": false, "error": { "code", "message" } }` on failure.
+
+| Method | Endpoint | Auth | Description |
+|---|---|---|---|
+| POST | /api/report | none | Submit a report (image, notes, location); returns AI triage and nearest facilities |
+| GET | /api/reports | none | List saved reports |
+| POST | /api/auth/register | none | Register a responder account |
+| POST | /api/auth/login | none | Log in, returns a JWT |
+| GET | /api/cases | JWT | List active cases, sorted by severity then distance then time |
+| POST | /api/cases/:id/respond | JWT | Claim a case |
+| POST | /api/cases/:id/resolve | JWT | Mark a case resolved |
+| GET | /health | none | Backend health check |
+| POST | /analyze | none | AI service: image analysis (called by the backend, not the frontend directly) |
+| GET | /health | none | AI service health check |
+
+## Known limitations
+
+- **Species detection uses a real pretrained model (MobileNetV2 on ImageNet), but severity assessment is still a heuristic.** Species classification runs actual inference and buckets ImageNet's ~120 dog breeds, cat variants, and bird species into Dog/Cat/Bird/Unknown. Severity ("Critical"/"Urgent"/"Mild"), however, has no equivalent pretrained model to draw on: it's estimated from image contrast as a rough proxy for visible trauma, with no real understanding of injuries. It will misjudge severity routinely. The reporter app surfaces this directly with a disclaimer and lets the reporter override the AI's severity call before submitting; treat the automated severity as a prompt to look closely, not a diagnosis.
+- The facility list is a small, manually maintained set for the Lucknow area, not a live directory.
+- There is no seeded responder account; each deployment starts with an empty responder table.
