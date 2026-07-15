@@ -78,9 +78,11 @@ app.post('/api/report', async (req, res) => {
       aiResult = {
         species: 'Unknown',
         severity: 'Mild',
-        injuries: ['Unable to analyze - AI service unavailable'],
+        injuries: ['Unable to analyze, AI service unavailable'],
         confidence: 0.5,
         first_aid: ['Please consult a veterinarian for professional assessment'],
+        detected_label: null,
+        severity_note: 'AI analysis was unavailable for this report. Severity was not assessed, use your own judgment and consult a vet.',
       };
     }
 
@@ -151,7 +153,7 @@ app.get('/health', (req, res) => {
   success(res, { status: 'ok', service: 'paw-rescue-backend' });
 });
 
-// Global error handler — keeps every response (including body-parser
+// Global error handler: keeps every response (including body-parser
 // failures like oversized payloads) in the standard { success, error } shape.
 app.use((err, req, res, next) => {
   if (err.type === 'entity.too.large') {
@@ -166,11 +168,9 @@ app.use((err, req, res, next) => {
 if (require.main === module) {
   initializeDB();
   app.listen(PORT, () => {
-    console.log(`\n Backend running on http://localhost:${PORT}`);
-    console.log(` Database location: ${DB_PATH}`);
-    console.log(` CORS enabled for frontend`);
-    console.log(` AI Service: ${AI_SERVICE_URL}`);
-    console.log('────────────────────────────────\n');
+    console.log(`Backend running on http://localhost:${PORT}`);
+    console.log(`Database location: ${DB_PATH}`);
+    console.log(`AI service: ${AI_SERVICE_URL}`);
   });
 
   process.on('SIGTERM', () => {

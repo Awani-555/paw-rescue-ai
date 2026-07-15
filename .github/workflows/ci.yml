@@ -9,32 +9,47 @@ on:
 jobs:
   test-backend:
     runs-on: ubuntu-latest
+    env:
+      JWT_SECRET: test-secret-for-ci
+      PORT: 5001
+      NODE_ENV: test
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with: { node-version: '20' }
-      - run: cd backend && npm ci
-      - run: cd backend && npm test
+        with:
+          node-version: '24'
+      - working-directory: backend
+        run: npm ci
+      - working-directory: backend
+        run: npm test
 
   test-frontend:
     runs-on: ubuntu-latest
+    env:
+      VITE_BACKEND_URL: http://localhost:5001
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with: { node-version: '20' }
-      - run: cd frontend && npm ci
-      - run: cd frontend && npm test
-      - run: cd frontend && npm run build
+        with:
+          node-version: '24'
+      - working-directory: frontend
+        run: npm ci
+      - working-directory: frontend
+        run: npm test
+      - working-directory: frontend
+        run: npm run build
 
   deploy-frontend:
     needs: [test-backend, test-frontend]
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with: { node-version: '20' }
-      - run: cd frontend && npm ci && npm run build
+        with:
+          node-version: '24'
+      - working-directory: frontend
+        run: npm ci && npm run build
       - uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
