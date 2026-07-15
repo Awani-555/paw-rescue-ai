@@ -1,44 +1,55 @@
 {
+  "_note": "Verified via web search on 2026-07-14. Coordinates are locality-level approximations (not precise street geocoding). Hours are only stated where a source confirmed them; otherwise call ahead. Replace or re-verify before relying on this in production.",
   "facilities": [
-    {
-      "name": "SPCA Lucknow",
-      "type": "Animal Shelter",
-      "lat": 26.8553,
-      "lng": 80.9520,
-      "phone": "+91-522-2620196",
-      "available24h": false
-    },
     {
       "name": "Lucknow Municipal Corporation Animal Helpline",
       "type": "Government Animal Control",
+      "address": "Citywide dispatch, Lucknow Nagar Nigam",
       "lat": 26.8467,
       "lng": 80.9462,
-      "phone": "+91-522-2630000",
-      "available24h": true
+      "phone": "6389300056",
+      "hours": null,
+      "source": "https://www.petkonnect.in/blogs/news-diys/save-a-stray-helpline-in-lucknow"
     },
     {
-      "name": "Pet Care Veterinary Clinic",
-      "type": "Veterinary Clinic",
-      "lat": 26.8417,
-      "lng": 80.9308,
-      "phone": "+91-9235567890",
-      "available24h": false
+      "name": "Government Veterinary Hospital, Gomti Nagar",
+      "type": "Government Veterinary Hospital",
+      "address": "24C/50, Malhaur Railway Station Road, Vikalp Khand, Gomti Nagar, Lucknow 226028",
+      "lat": 26.8493,
+      "lng": 80.9878,
+      "phone": "+91-9838003789",
+      "hours": "Mon-Sat 8:00 AM-8:00 PM, closed Sunday",
+      "source": "https://www.joonsquare.com/veterinary/government-veterinary-hospital-lucknow"
     },
     {
-      "name": "Prani Mitra Animal Hospital",
-      "type": "Animal Hospital",
-      "lat": 26.8700,
-      "lng": 80.9600,
-      "phone": "+91-9415000000",
-      "available24h": true
-    },
-    {
-      "name": "Animal Aid Lucknow Partner",
+      "name": "Jeev Aashraya",
       "type": "Animal Rescue NGO",
-      "lat": 26.8320,
-      "lng": 80.9100,
-      "phone": "+91-1800-2009977",
-      "available24h": true
+      "address": "2/86, Vijay Khand, Gomti Nagar, Lucknow 226010",
+      "lat": 26.8601,
+      "lng": 80.9942,
+      "phone": "8009392222",
+      "hours": null,
+      "source": "https://www.jeevaashraya.com/"
+    },
+    {
+      "name": "IGSS (Indu Gramudyog Sewa Sansthan)",
+      "type": "Animal Welfare NGO",
+      "address": "1/22, Viram Khand, Gomti Nagar, Lucknow 226010",
+      "lat": 26.8601,
+      "lng": 80.9942,
+      "phone": "+91-9838222033",
+      "hours": null,
+      "source": "https://igssngo.com/"
+    },
+    {
+      "name": "FARGO (Feeding Animals and Rescue Group Foundation)",
+      "type": "Animal Rescue NGO",
+      "address": "M2/54, Sector 1, Janki Vihar Colony, Jankipuram, Lucknow",
+      "lat": 26.9040,
+      "lng": 80.9430,
+      "phone": null,
+      "hours": null,
+      "source": "https://petofy.com/lucknow/pet-ngos"
     }
   ]
 }
