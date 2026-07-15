@@ -29,6 +29,3 @@ Thumbs.db
 # Logs
 *.log
 logs/
- 
-package-lock.json 
-yarn.lock 
