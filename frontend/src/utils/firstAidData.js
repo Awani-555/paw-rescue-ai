@@ -58,7 +58,7 @@ export const firstAidData = [
     severity: 'critical',
     immediateSteps: [
       'Apply gentle, steady pressure with a clean cloth over the wound',
-      'Do not remove the cloth even if it soaks through — add another layer on top',
+      'Do not remove the cloth even if it soaks through, add another layer on top instead',
       'Keep the cat warm and still during transport',
     ],
     doNot: ['Do not remove the cloth to check the wound', 'Do not use antiseptic or powder on the wound'],
@@ -85,7 +85,7 @@ export const firstAidData = [
     immediateSteps: [
       'Leave the bird undisturbed in a safe, quiet spot for about an hour',
       'If it must be moved, use a soft cloth and a ventilated box',
-      'Check back after an hour — most birds recover and fly off on their own',
+      'Check back after an hour. Most birds recover and fly off on their own',
     ],
     doNot: ['Do not try to force the bird to fly', 'Do not give water directly into the beak'],
     callImmediately: false,
@@ -98,7 +98,7 @@ export const firstAidData = [
     immediateSteps: [
       'Do not move the animal’s spine or neck unnecessarily',
       'Keep the animal warm using a blanket or cloth',
-      'Call for help immediately — this needs professional care fast',
+      'Call for help immediately. This needs professional care fast',
     ],
     doNot: ['Do not lift by the middle of the body', 'Do not give food or water'],
     callImmediately: true,
@@ -124,7 +124,7 @@ export const firstAidData = [
     immediateSteps: [
       'Stay calm and keep the animal as still as possible',
       'Transport to the nearest vet or facility immediately',
-      'Do not delay — every minute matters',
+      'Do not delay. Every minute matters',
     ],
     doNot: ['Do not put your hand inside the mouth', 'Do not attempt home remedies'],
     callImmediately: true,

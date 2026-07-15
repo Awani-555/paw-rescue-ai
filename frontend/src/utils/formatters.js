@@ -1,5 +1,6 @@
 export function formatDistance(km) {
   if (km == null || Number.isNaN(km)) return 'Unknown distance'
+  if (km < 0.05) return 'Nearby'
   if (km < 1) return `${Math.round(km * 1000)} m away`
   return `${km.toFixed(1)} km away`
 }
