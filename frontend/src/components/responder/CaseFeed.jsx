@@ -14,7 +14,7 @@ export function sortCases(cases) {
   })
 }
 
-export default function CaseFeed({ cases, onRespond, onViewMap }) {
+export default function CaseFeed({ cases, onRespond, onResolve, onViewMap }) {
   const sorted = sortCases(cases)
 
   if (sorted.length === 0) {
@@ -28,7 +28,7 @@ export default function CaseFeed({ cases, onRespond, onViewMap }) {
   return (
     <div className="case-feed">
       {sorted.map((caseItem) => (
-        <CaseCard key={caseItem.id} caseItem={caseItem} onRespond={onRespond} onViewMap={onViewMap} />
+        <CaseCard key={caseItem.id} caseItem={caseItem} onRespond={onRespond} onResolve={onResolve} onViewMap={onViewMap} />
       ))}
     </div>
   )

@@ -3,7 +3,8 @@ import LoginForm from '../components/responder/LoginForm'
 import CaseFeed from '../components/responder/CaseFeed'
 import CaseMap from '../components/responder/CaseMap'
 import Spinner from '../components/ui/Spinner'
-import { getCases, respondToCase, clearToken, hasToken } from '../utils/api'
+import BackButton from '../components/ui/BackButton'
+import { getCases, respondToCase, resolveCase, clearToken, hasToken } from '../utils/api'
 import { useGeolocation } from '../hooks/useGeolocation'
 
 export default function ResponderPage({ onBack }) {
@@ -39,6 +40,13 @@ export default function ResponderPage({ onBack }) {
     await respondToCase(caseId)
   }
 
+  const handleResolve = async (caseId) => {
+    // Resolved cases drop out of the active feed server-side, so remove
+    // it locally too instead of leaving a stale "resolved" card in the list.
+    setCases((prev) => prev.filter((c) => c.id !== caseId))
+    await resolveCase(caseId)
+  }
+
   const handleLogout = () => {
     clearToken()
     setLoggedIn(false)
@@ -48,9 +56,7 @@ export default function ResponderPage({ onBack }) {
     return (
       <div className="page-container">
         <div className="step-header">
-          <button className="step-back" onClick={onBack}>
-            ←
-          </button>
+          <BackButton onClick={onBack} />
         </div>
         <LoginForm onSuccess={() => setLoggedIn(true)} />
       </div>
@@ -84,7 +90,7 @@ export default function ResponderPage({ onBack }) {
       {error && <div className="form-error">{error}</div>}
 
       {!loading && !error && view === 'list' && (
-        <CaseFeed cases={cases} onRespond={handleRespond} onViewMap={() => setView('map')} />
+        <CaseFeed cases={cases} onRespond={handleRespond} onResolve={handleResolve} onViewMap={() => setView('map')} />
       )}
 
       {!loading && !error && view === 'map' && (
