@@ -1,5 +1,5 @@
 :root {
-  /* Colors — warm, calm, trustworthy */
+  /* Colors: warm, calm, trustworthy */
   --color-cream: #F9F6F1;
   --color-warm-white: #FDFCFA;
   --color-sand: #E8E0D5;
@@ -10,12 +10,12 @@
   --color-text-muted: #7A6A52;
   --color-text-light: #B5A48C;
 
-  /* Accent — one green, calm not alarming */
+  /* Accent: one green, calm not alarming */
   --color-accent: #5B8A6F;
   --color-accent-light: #EBF3EE;
   --color-accent-dark: #3D6B52;
 
-  /* Severity colors — muted not harsh */
+  /* Severity colors: muted not harsh */
   --color-critical: #C0392B;
   --color-critical-bg: #FDF0EE;
   --color-urgent: #D4820A;
@@ -61,4 +61,9 @@
 
   /* Transitions */
   --transition: 200ms ease;
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
