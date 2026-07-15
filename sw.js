@@ -1,5 +1,9 @@
 const CACHE_NAME = 'pawrescue-v1';
-const PRECACHE_URLS = ['/', '/index.html', '/manifest.json'];
+// Relative to sw.js's own location, not the domain root. This file is
+// served from whatever subpath the app is deployed under (e.g. GitHub
+// Pages project sites), and cache.addAll() rejects entirely if any one
+// of these 404s, which would silently break the service worker install.
+const PRECACHE_URLS = ['./', './index.html', './manifest.json'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -52,7 +56,7 @@ async function cacheFirst(request) {
     }
     return response;
   } catch (err) {
-    const fallback = await caches.match('/index.html');
+    const fallback = await caches.match('./index.html');
     return fallback || Response.error();
   }
 }
