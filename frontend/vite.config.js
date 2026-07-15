@@ -1,7 +1,11 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
-export default defineConfig({
+// GitHub Pages serves this repo as a project site at /paw-rescue-ai/, not
+// at the domain root, so production asset URLs need that prefix. Local dev
+// is still served from root.
+export default defineConfig(({ command }) => ({
+  base: command === 'build' ? '/paw-rescue-ai/' : '/',
   plugins: [react()],
   server: {
     port: 5173,
@@ -12,4 +16,4 @@ export default defineConfig({
     globals: true,
     setupFiles: './src/setupTests.js',
   },
-})
+}))

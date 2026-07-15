@@ -2,14 +2,14 @@
   "name": "PawRescue AI",
   "short_name": "PawRescue",
   "description": "Report injured animals and get immediate help",
-  "start_url": "/",
+  "start_url": ".",
   "display": "standalone",
   "background_color": "#F9F6F1",
   "theme_color": "#5B8A6F",
   "orientation": "portrait",
   "icons": [
-    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
-    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ]
 }
