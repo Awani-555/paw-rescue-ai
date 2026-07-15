@@ -9,7 +9,7 @@
     <meta name="theme-color" content="#5B8A6F" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-    <meta name="description" content="Report injured animals and get immediate help — no login required." />
+    <meta name="description" content="Report injured animals and get immediate help. No login required." />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -21,14 +21,5 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
-    <script>
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js').catch((err) => {
-            console.error('Service worker registration failed:', err);
-          });
-        });
-      }
-    </script>
   </body>
 </html>

@@ -20,7 +20,7 @@ function isApiRequest(url) {
   return url.pathname.startsWith('/api/');
 }
 
-// Network-first for API calls — always prefer fresh data, fall back to
+// Network-first for API calls: always prefer fresh data, fall back to
 // whatever was last cached (e.g. the first aid library) when offline.
 async function networkFirst(request) {
   try {
@@ -38,7 +38,7 @@ async function networkFirst(request) {
   }
 }
 
-// Cache-first for static assets (JS/CSS/images) — the first aid library's
+// Cache-first for static assets (JS/CSS/images): the first aid library's
 // data ships inside the app bundle, so caching the bundle keeps it available offline.
 async function cacheFirst(request) {
   const cached = await caches.match(request);
