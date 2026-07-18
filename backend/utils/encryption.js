@@ -8,7 +8,7 @@ function getKey() {
   if (!keyHex) {
     throw new Error(
       'HELPER_DATA_ENCRYPTION_KEY environment variable is required to store helper contact info. ' +
-        'Generate one with: node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'hex\'))"'
+        "Generate one with: node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\""
     );
   }
   const key = Buffer.from(keyHex, 'hex');

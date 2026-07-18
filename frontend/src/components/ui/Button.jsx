@@ -11,14 +11,7 @@ export default function Button({
   className = '',
   ...rest
 }) {
-  const classes = [
-    'btn',
-    `btn-${variant}`,
-    size === 'large' ? 'btn-lg' : '',
-    className,
-  ]
-    .filter(Boolean)
-    .join(' ')
+  const classes = ['btn', `btn-${variant}`, size === 'large' ? 'btn-lg' : '', className].filter(Boolean).join(' ')
 
   return (
     <button type={type} className={classes} onClick={onClick} disabled={disabled || loading} {...rest}>

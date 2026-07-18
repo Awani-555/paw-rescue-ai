@@ -69,9 +69,7 @@ function App() {
         </div>
       )}
 
-      {page === PAGES.REPORTER && (
-        <ReporterPage onOpenFirstAidLibrary={() => setPage(PAGES.FIRST_AID)} />
-      )}
+      {page === PAGES.REPORTER && <ReporterPage onOpenFirstAidLibrary={() => setPage(PAGES.FIRST_AID)} />}
 
       {page === PAGES.FIRST_AID && (
         <Suspense fallback={<PageFallback />}>

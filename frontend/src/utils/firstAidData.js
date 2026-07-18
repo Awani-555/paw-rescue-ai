@@ -135,10 +135,7 @@ export function filterFirstAid(data, { species = 'All', query = '' } = {}) {
   const q = query.trim().toLowerCase()
   return data.filter((entry) => {
     const matchesSpecies = species === 'All' || entry.species === species
-    const matchesQuery =
-      !q ||
-      entry.situation.toLowerCase().includes(q) ||
-      entry.species.toLowerCase().includes(q)
+    const matchesQuery = !q || entry.situation.toLowerCase().includes(q) || entry.species.toLowerCase().includes(q)
     return matchesSpecies && matchesQuery
   })
 }

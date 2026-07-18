@@ -28,7 +28,12 @@ export default function CallHelperButton({ caseId, helperId, name }) {
 
   return (
     <div>
-      <button type="button" className="btn btn-secondary btn-full public-helper-call" onClick={handleClick} disabled={loading}>
+      <button
+        type="button"
+        className="btn btn-secondary btn-full public-helper-call"
+        onClick={handleClick}
+        disabled={loading}
+      >
         {loading ? 'Connecting...' : `Call ${name}`}
       </button>
       {error && <div className="form-error">{error}</div>}

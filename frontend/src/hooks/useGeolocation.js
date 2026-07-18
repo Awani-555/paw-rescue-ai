@@ -43,8 +43,8 @@ export function useGeolocation() {
           err.code === err.PERMISSION_DENIED
             ? 'Location access needed. Tap to enter manually.'
             : err.code === err.TIMEOUT
-            ? 'Location timed out. Using approximate location.'
-            : 'Could not determine location. Using approximate location.'
+              ? 'Location timed out. Using approximate location.'
+              : 'Could not determine location. Using approximate location.'
 
         setState({
           ...LUCKNOW_FALLBACK,

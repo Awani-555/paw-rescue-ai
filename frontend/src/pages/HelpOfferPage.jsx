@@ -82,8 +82,8 @@ export default function HelpOfferPage({ caseId, onBack }) {
           <p className="help-offer-headline">An animal nearby may need help.</p>
           <p className="help-offer-meta">Reported {formatTimeAgo(summary?.timestamp)}</p>
           <p>
-            No exact location or details are shared here. If you're nearby and able to help, the person who
-            reported it will get your name and number to coordinate.
+            No exact location or details are shared here. If you're nearby and able to help, the person who reported it
+            will get your name and number to coordinate.
           </p>
           <Button variant="primary" size="large" className="btn-full" onClick={() => setState(STATES.FORM)}>
             I'll Help
@@ -101,19 +101,13 @@ export default function HelpOfferPage({ caseId, onBack }) {
           </div>
           <div className="form-field">
             <label htmlFor="helper-phone">Phone number</label>
-            <input
-              id="helper-phone"
-              type="tel"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              required
-            />
+            <input id="helper-phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} required />
           </div>
           <label className="help-offer-consent">
             <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} />
             <span>
-              I understand my name and phone number will be shared with the person who reported this animal, so
-              they can contact me.
+              I understand my name and phone number will be shared with the person who reported this animal, so they can
+              contact me.
             </span>
           </label>
           <Button

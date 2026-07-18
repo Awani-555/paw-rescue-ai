@@ -15,8 +15,7 @@ export default function LoginForm({ onSuccess }) {
     setError('')
     setLoading(true)
 
-    const { data, error: reqError } =
-      mode === 'login' ? await loginResponder(form) : await registerResponder(form)
+    const { data, error: reqError } = mode === 'login' ? await loginResponder(form) : await registerResponder(form)
 
     setLoading(false)
 

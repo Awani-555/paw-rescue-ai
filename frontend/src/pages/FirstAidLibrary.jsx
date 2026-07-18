@@ -58,9 +58,7 @@ export default function FirstAidLibrary({ onBack }) {
               <Badge severity={entry.severity} />
             </div>
 
-            {expandedId === entry.id && (
-              <FirstAidCard steps={entry.immediateSteps} doNot={entry.doNot} />
-            )}
+            {expandedId === entry.id && <FirstAidCard steps={entry.immediateSteps} doNot={entry.doNot} />}
           </Card>
         ))}
 

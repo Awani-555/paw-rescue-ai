@@ -27,7 +27,15 @@ export default function CameraCapture({ camera }) {
         </div>
       ) : (
         <div className="camera-capture-zone" onClick={pickFromCamera}>
-          <svg className="camera-capture-icon" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+          <svg
+            className="camera-capture-icon"
+            width="40"
+            height="40"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+          >
             <path
               d="M4 8h3l1.5-2h7L17 8h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"
               strokeLinecap="round"

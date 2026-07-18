@@ -30,7 +30,9 @@ export default function CaseCard({ caseItem, onRespond, onResolve, onViewMap, hi
           <span>{formatDistance(caseItem.distance)}</span>
           <span>{formatTimeAgo(caseItem.timestamp)}</span>
         </div>
-        <div style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-muted)', marginBottom: 'var(--space-2)' }}>
+        <div
+          style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-muted)', marginBottom: 'var(--space-2)' }}
+        >
           {caseItem.location}
         </div>
 
