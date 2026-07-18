@@ -4,6 +4,7 @@ A three-service platform for reporting injured animals: an anonymous reporter fl
 
 ## Table of contents
 
+- [Screenshots](#screenshots)
 - [Features](#features)
 - [Architecture](#architecture)
 - [Prerequisites](#prerequisites)
@@ -12,6 +13,43 @@ A three-service platform for reporting injured animals: an anonymous reporter fl
 - [Project structure](#project-structure)
 - [API reference](#api-reference)
 - [Known limitations](#known-limitations)
+
+## Screenshots
+
+No live URL yet (see [Deployment](#architecture)) - here's the app running end to end.
+
+**Reporter flow (no login)**
+
+<table>
+<tr>
+<td width="50%"><img src="screenshots/landing-hero.png" alt="Landing page"><br><sub>Landing page</sub></td>
+<td width="50%"><img src="screenshots/landing-how-it-works.png" alt="How it works, plus the Tier 1 nearby-alert opt-in"><br><sub>How it works, plus the anonymous nearby-alert opt-in</sub></td>
+</tr>
+<tr>
+<td width="50%"><img src="screenshots/reporter-capture-empty.png" alt="Photo capture screen"><br><sub>Photo capture</sub></td>
+<td width="50%"><img src="screenshots/reporter-capture-filled.png" alt="Photo captured, ready to continue"><br><sub>Photo captured, location detected</sub></td>
+</tr>
+<tr>
+<td width="50%"><img src="screenshots/reporter-confirm-top.png" alt="AI triage result with severity disclaimer and override"><br><sub>AI triage result - species, severity estimate with disclaimer, and manual override</sub></td>
+<td width="50%"><img src="screenshots/reporter-confirm-bottom.png" alt="First aid steps and submit button"><br><sub>First aid steps shown before submitting</sub></td>
+</tr>
+<tr>
+<td width="50%"><img src="screenshots/reporter-dispatched.png" alt="Dispatched screen with nearest facilities"><br><sub>Nearest facilities, ranked by distance</sub></td>
+<td width="50%"><img src="screenshots/reporter-first-aid.png" alt="First aid steps while waiting for help"><br><sub>First aid guidance while help is on the way</sub></td>
+</tr>
+</table>
+
+**Responder dashboard**
+
+<table>
+<tr>
+<td width="50%"><img src="screenshots/responder-login.png" alt="Responder login form"><br><sub>Responder login</sub></td>
+<td width="50%"><img src="screenshots/responder-register.png" alt="Responder registration form"><br><sub>Organization registration</sub></td>
+</tr>
+<tr>
+<td colspan="2"><img src="screenshots/responder-cases-list.png" alt="Active cases list view" width="50%"><br><sub>Live case feed (list view)</sub></td>
+</tr>
+</table>
 
 ## Features
 
@@ -57,6 +95,8 @@ Frontend (React + Vite, PWA)  --POST /api/report-->  Backend (Express)
 - **Supabase free projects pause after 7 days of no activity** and need a manual "restore" click from the Supabase dashboard before the database responds again.
 
 Supabase's *direct* database connection host (`db.<ref>.supabase.co`) is IPv6-only; use the connection **pooler** string instead (Supabase dashboard → Project Settings → Database → Connection Pooling → Connection string, mode: Transaction) for `DATABASE_URL`, since many hosts/networks - including some sandboxes and CI runners - have no IPv6 egress at all.
+
+**CI setup**: the backend test job needs `DATABASE_URL` as a **GitHub repository secret** (Settings → Secrets and variables → Actions → New repository secret, name `DATABASE_URL`, value the same pooler connection string as above) - tests run against an isolated `test_paw_rescue` schema inside that same database, truncated at the start of every run, so this never touches real data.
 
 ## Prerequisites
 
