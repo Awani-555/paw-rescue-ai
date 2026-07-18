@@ -21,6 +21,8 @@ jobs:
       - working-directory: backend
         run: npm ci
       - working-directory: backend
+        run: npm run lint
+      - working-directory: backend
         run: npm test
 
   test-frontend:
@@ -35,12 +37,28 @@ jobs:
       - working-directory: frontend
         run: npm ci
       - working-directory: frontend
+        run: npm run lint
+      - working-directory: frontend
         run: npm test
       - working-directory: frontend
         run: npm run build
 
+  test-ai-service:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: ai-service/requirements-dev.txt
+      - working-directory: ai-service
+        run: pip install -r requirements-dev.txt
+      - working-directory: ai-service
+        run: pytest -v
+
   deploy-frontend:
-    needs: [test-backend, test-frontend]
+    needs: [test-backend, test-frontend, test-ai-service]
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     permissions:
