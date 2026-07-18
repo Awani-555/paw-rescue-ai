@@ -7,7 +7,9 @@ process.env.DB_PATH = TEST_DB_PATH;
 process.env.VOLUNTEER_STORE_PATH = TEST_VOLUNTEER_STORE_PATH;
 process.env.JWT_SECRET = 'test-secret';
 process.env.AI_SERVICE_URL = 'http://localhost:9999'; // deliberately unreachable -> exercises fallback path
-process.env.VAPID_PUBLIC_KEY = 'BAe7NnYq3lxpwl2kElKT_1RVRAGaEwyCm0tkfc5pVuajbnsHAZi4x8SmOvtifc9OfkbKOcJlCuzxEBJQ-eMMpeQ';
+process.env.AI_SERVICE_TOKEN = 'test-ai-service-token';
+process.env.VAPID_PUBLIC_KEY =
+  'BAe7NnYq3lxpwl2kElKT_1RVRAGaEwyCm0tkfc5pVuajbnsHAZi4x8SmOvtifc9OfkbKOcJlCuzxEBJQ-eMMpeQ';
 process.env.VAPID_PRIVATE_KEY = 'UMt3bPUPRH-psqMtS8CJ515m6cV8A00bXuDyuDkUmJU';
 process.env.ALERT_RADIUS_METERS = '5000'; // generous radius so fixed test coordinates reliably match
 // Fixed test key so this doesn't silently depend on the real (gitignored)
@@ -131,20 +133,26 @@ describe('POST /api/auth/register', () => {
 
 describe('POST /api/auth/login', () => {
   it('logs in with correct credentials and returns a token', async () => {
-    const res = await request(app).post('/api/auth/login').send({ email: 'responder1@example.com', password: 'testpass123' });
+    const res = await request(app)
+      .post('/api/auth/login')
+      .send({ email: 'responder1@example.com', password: 'testpass123' });
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
     expect(res.body.data).toHaveProperty('token');
   });
 
   it('returns 401 for a wrong password', async () => {
-    const res = await request(app).post('/api/auth/login').send({ email: 'responder1@example.com', password: 'wrongpassword' });
+    const res = await request(app)
+      .post('/api/auth/login')
+      .send({ email: 'responder1@example.com', password: 'wrongpassword' });
     expect(res.status).toBe(401);
     expect(res.body.error.code).toBe('INVALID_CREDENTIALS');
   });
 
   it('returns 401 for an unknown email', async () => {
-    const res = await request(app).post('/api/auth/login').send({ email: 'nobody@example.com', password: 'testpass123' });
+    const res = await request(app)
+      .post('/api/auth/login')
+      .send({ email: 'nobody@example.com', password: 'testpass123' });
     expect(res.status).toBe(401);
     expect(res.body.error.code).toBe('INVALID_CREDENTIALS');
   });
@@ -193,7 +201,9 @@ describe('/api/cases (JWT protected)', () => {
   });
 
   it('returns 404 when responding to a case that does not exist', async () => {
-    const res = await request(app).post('/api/cases/case_does_not_exist/respond').set('Authorization', `Bearer ${token}`);
+    const res = await request(app)
+      .post('/api/cases/case_does_not_exist/respond')
+      .set('Authorization', `Bearer ${token}`);
     expect(res.status).toBe(404);
     expect(res.body.error.code).toBe('CASE_NOT_FOUND');
   });
@@ -264,10 +274,16 @@ describe('POST /api/volunteers/registered-location and nearby alerting', () => {
   });
 
   it('sends a full-detail push notification to a nearby registered volunteer when a new report is submitted', async () => {
-    const res = await request(app)
-      .post('/api/report')
-      .send({ image: TINY_JPEG_BASE64, notes: 'alert test', location: 'Near volunteer', lat: 26.85, lng: 80.95 });
+    const res = await request(app).post('/api/report').send({
+      image: TINY_JPEG_BASE64,
+      notes: 'alert test',
+      location: 'Near volunteer',
+      lat: 26.85,
+      lng: 80.95,
+      locationSource: 'gps',
+    });
     expect(res.status).toBe(201);
+    expect(res.body.data.nearbyAlertsSkipped).toBe(false);
 
     // alertNearbyVolunteers is fire-and-forget from the request handler,
     // so give its promise chain a tick to actually run before asserting.
@@ -292,9 +308,44 @@ describe('POST /api/volunteers/registered-location and nearby alerting', () => {
 
     webpush.sendNotification.mockClear();
 
+    await request(app).post('/api/report').send({
+      image: TINY_JPEG_BASE64,
+      notes: 'no alert test',
+      location: 'Near volunteer',
+      lat: 26.85,
+      lng: 80.95,
+      locationSource: 'gps',
+    });
+
+    await new Promise((resolve) => setImmediate(resolve));
+
+    expect(webpush.sendNotification).not.toHaveBeenCalled();
+  });
+
+  it('skips nearby-volunteer alerting entirely when the report has no real GPS fix, even if the fallback coordinates happen to match a tracked volunteer', async () => {
+    // The previous test left this volunteer's tracking disabled; re-enable
+    // it so this test genuinely isolates the GPS-gating behavior rather
+    // than accidentally passing because tracking was already off.
     await request(app)
-      .post('/api/report')
-      .send({ image: TINY_JPEG_BASE64, notes: 'no alert test', location: 'Near volunteer', lat: 26.85, lng: 80.95 });
+      .post('/api/volunteers/registered-location')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ lat: 26.85, lng: 80.95, trackingEnabled: true, pushSubscription: fakeSubscription });
+
+    webpush.sendNotification.mockClear();
+
+    const res = await request(app).post('/api/report').send({
+      image: TINY_JPEG_BASE64,
+      notes: 'no gps test',
+      location: 'Typed in manually, GPS denied',
+      lat: 26.85,
+      lng: 80.95,
+      // locationSource omitted/not 'gps': this must never be treated as a
+      // real fix, even though 26.85/80.95 is right next to the volunteer
+      // registered earlier in this describe block.
+    });
+    expect(res.status).toBe(201);
+    expect(res.body.data.nearbyAlertsSkipped).toBe(true);
+    expect(res.body.data.hasGpsLocation).toBe(false);
 
     await new Promise((resolve) => setImmediate(resolve));
 
@@ -302,7 +353,7 @@ describe('POST /api/volunteers/registered-location and nearby alerting', () => {
   });
 });
 
-describe('Tier 1: anonymous public volunteers and I\'ll Help', () => {
+describe("Tier 1: anonymous public volunteers and I'll Help", () => {
   const publicFakeSubscription = {
     endpoint: 'https://push.example.com/public-subscription-id',
     keys: { p256dh: 'fake-p256dh-public', auth: 'fake-auth-public' },
@@ -390,9 +441,7 @@ describe('Tier 1: anonymous public volunteers and I\'ll Help', () => {
     });
 
     it('rejects submission with a missing name', async () => {
-      const res = await request(app)
-        .post(`/api/cases/${openCaseId}/help`)
-        .send({ phone: '5551234567', consent: true });
+      const res = await request(app).post(`/api/cases/${openCaseId}/help`).send({ phone: '5551234567', consent: true });
       expect(res.status).toBe(400);
     });
 
@@ -454,22 +503,29 @@ describe('Tier 1: anonymous public volunteers and I\'ll Help', () => {
 
   describe('nearby alerting for Tier 1 public volunteers', () => {
     it('sends a soft, vague push payload with no species/severity/coordinates', async () => {
-      await request(app).post('/api/volunteers/public-location').send({
-        deviceId: 'device-nearby-999999',
-        lat: 26.8467,
-        lng: 80.9462,
-        trackingEnabled: true,
-        pushSubscription: {
-          endpoint: 'https://push.example.com/nearby-public-sub',
-          keys: { p256dh: 'k1', auth: 'k2' },
-        },
-      });
+      await request(app)
+        .post('/api/volunteers/public-location')
+        .send({
+          deviceId: 'device-nearby-999999',
+          lat: 26.8467,
+          lng: 80.9462,
+          trackingEnabled: true,
+          pushSubscription: {
+            endpoint: 'https://push.example.com/nearby-public-sub',
+            keys: { p256dh: 'k1', auth: 'k2' },
+          },
+        });
 
       webpush.sendNotification.mockClear();
 
-      const reportRes = await request(app)
-        .post('/api/report')
-        .send({ image: TINY_JPEG_BASE64, notes: 'soft alert test', location: 'Near public volunteer', lat: 26.8467, lng: 80.9462 });
+      const reportRes = await request(app).post('/api/report').send({
+        image: TINY_JPEG_BASE64,
+        notes: 'soft alert test',
+        location: 'Near public volunteer',
+        lat: 26.8467,
+        lng: 80.9462,
+        locationSource: 'gps',
+      });
       expect(reportRes.status).toBe(201);
 
       await new Promise((resolve) => setImmediate(resolve));
@@ -552,7 +608,6 @@ describe('Call-token redirect (phone number never sent to the frontend)', () => 
       // one imported at module scope for the HTTP tests above, so this
       // doesn't share in-flight tokens with them.
       jest.resetModules();
-      // eslint-disable-next-line global-require
       const { issueCallToken, consumeCallToken, TOKEN_TTL_MS } = require('./utils/callTokens');
       const token = issueCallToken('5551230000');
       jest.advanceTimersByTime(TOKEN_TTL_MS + 1000);
@@ -560,6 +615,39 @@ describe('Call-token redirect (phone number never sent to the frontend)', () => 
     } finally {
       jest.useRealTimers();
     }
+  });
+});
+
+describe('purgeOldResolvedCases (bounds db.cases, which has no other size cap)', () => {
+  const { withDB, readDB } = require('./utils/db');
+  const { purgeOldResolvedCases, RESOLVED_CASE_RETENTION_MS } = require('./utils/purgeOldResolvedCases');
+
+  it('removes a resolved case past the retention window, keeps a recently-resolved one, and never removes an open case regardless of age', async () => {
+    const longAgo = new Date(Date.now() - RESOLVED_CASE_RETENTION_MS - 60 * 60 * 1000).toISOString();
+    const recently = new Date().toISOString();
+
+    await withDB((db) => {
+      db.cases.push(
+        { id: 'case_old_resolved', status: 'resolved', resolvedAt: longAgo, timestamp: longAgo, publicHelpers: [] },
+        {
+          id: 'case_recent_resolved',
+          status: 'resolved',
+          resolvedAt: recently,
+          timestamp: recently,
+          publicHelpers: [],
+        },
+        { id: 'case_old_but_open', status: 'open', timestamp: longAgo, publicHelpers: [] }
+      );
+    });
+
+    const { purgedCount } = await purgeOldResolvedCases();
+    expect(purgedCount).toBe(1);
+
+    const db = readDB();
+    const ids = db.cases.map((c) => c.id);
+    expect(ids).not.toContain('case_old_resolved');
+    expect(ids).toContain('case_recent_resolved');
+    expect(ids).toContain('case_old_but_open');
   });
 });
 
@@ -587,9 +675,14 @@ describe('DELETE /api/volunteers/public-location/:deviceId (Tier 1 opt-out)', ()
 
     webpush.sendNotification.mockClear();
 
-    await request(app)
-      .post('/api/report')
-      .send({ image: TINY_JPEG_BASE64, notes: 'post opt-out test', location: 'Opt-out St', lat: 26.85, lng: 80.95 });
+    await request(app).post('/api/report').send({
+      image: TINY_JPEG_BASE64,
+      notes: 'post opt-out test',
+      location: 'Opt-out St',
+      lat: 26.85,
+      lng: 80.95,
+      locationSource: 'gps',
+    });
 
     await new Promise((resolve) => setImmediate(resolve));
 
@@ -604,10 +697,24 @@ describe('rate limiting', () => {
   it('blocks requests to /api/ after the limit is exceeded', async () => {
     let lastStatus = 200;
     for (let i = 0; i < 101; i++) {
+      // Sequential on purpose: needs to count toward the rate limit in order.
       // eslint-disable-next-line no-await-in-loop
       const res = await request(app).get('/api/reports');
       lastStatus = res.status;
     }
     expect(lastStatus).toBe(429);
   }, 30000);
+});
+
+describe('malformed request bodies', () => {
+  it('returns 400 VALIDATION_ERROR (not 500) for a body that is not valid JSON', async () => {
+    const res = await request(app)
+      .post('/api/report')
+      .set('Content-Type', 'application/json')
+      .send('{this is not json');
+
+    expect(res.status).toBe(400);
+    expect(res.body.success).toBe(false);
+    expect(res.body.error.code).toBe('VALIDATION_ERROR');
+  });
 });
