@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pawrescue-v1';
+const CACHE_NAME = 'pawrescue-fcf13daa35f9';
 // Relative to sw.js's own location, not the domain root. This file is
 // served from whatever subpath the app is deployed under (e.g. GitHub
 // Pages project sites), and cache.addAll() rejects entirely if any one
