@@ -1,10 +1,13 @@
 const path = require('path');
-const fs = require('fs');
 
-const TEST_DB_PATH = path.join(__dirname, 'db.test.json');
-const TEST_VOLUNTEER_STORE_PATH = path.join(__dirname, 'volunteer-locations.test.json');
-process.env.DB_PATH = TEST_DB_PATH;
-process.env.VOLUNTEER_STORE_PATH = TEST_VOLUNTEER_STORE_PATH;
+// Points every query in this run at an isolated schema inside the *same*
+// Supabase project/DATABASE_URL, rather than the real 'public' schema -
+// see utils/pgPool.js. Loaded from backend/.env (never hardcoded, never
+// logged - DATABASE_URL is a live credential) before anything that reads
+// it is required.
+require('dotenv').config({ path: path.join(__dirname, '.env') });
+process.env.PG_SCHEMA = 'test_paw_rescue';
+
 process.env.JWT_SECRET = 'test-secret';
 process.env.AI_SERVICE_URL = 'http://localhost:9999'; // deliberately unreachable -> exercises fallback path
 process.env.AI_SERVICE_TOKEN = 'test-ai-service-token';
@@ -22,16 +25,53 @@ jest.mock('web-push');
 const webpush = require('web-push');
 
 const request = require('supertest');
+const { pool } = require('./utils/pgPool');
+const { applyMigrations } = require('./migrations/apply');
 const app = require('./server');
 
 // Minimal valid 1x1 JPEG, base64-encoded (no data URL prefix).
 const TINY_JPEG_BASE64 =
   '/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAMCAgICAgMCAgIDAwMDBAYEBAQEBAgGBgUGCQgKCgkICQkKDA8MCgsOCwkJDRENDg8QEBEQCgwSExIQEw8QEBD/2wBDAQMDAwQDBAgEBAgQCwkLEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBD/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAj/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX/9k=';
 
-afterAll(() => {
-  if (fs.existsSync(TEST_DB_PATH)) fs.unlinkSync(TEST_DB_PATH);
-  if (fs.existsSync(TEST_VOLUNTEER_STORE_PATH)) fs.unlinkSync(TEST_VOLUNTEER_STORE_PATH);
+// Runs the full app against a real, isolated Postgres schema - not a mock
+// or an in-memory store. Applies migrations to test_paw_rescue (creating
+// it fresh if this is the first run in this environment) and truncates
+// every table first, so a previous run's data (or a previous run crashing
+// mid-suite) can never leak into this one - e.g. a stale 'responder1@
+// example.com' row would otherwise turn the registration test's 201 into
+// a 409 on the second run.
+beforeAll(async () => {
+  await applyMigrations();
+  await pool.query('TRUNCATE cases, responders, volunteer_locations, call_tokens CASCADE');
 });
+
+afterAll(async () => {
+  await pool.end();
+});
+
+// alertNearbyVolunteers() is fire-and-forget from the request handler, and
+// now involves a real network round-trip to Postgres (getTrackedVolunteers)
+// before it can even call webpush.sendNotification - unlike the old flat-
+// file version, where everything before that call was synchronous, so a
+// single setImmediate tick is no longer reliably enough time for it to
+// finish. Polls until the mock has actually been called instead of
+// guessing a fixed delay, so this passes as fast as the real round-trip
+// allows and only takes the full timeout if something is actually broken.
+async function waitForPushCall(timeoutMs = 3000) {
+  const start = Date.now();
+  while (webpush.sendNotification.mock.calls.length === 0) {
+    if (Date.now() - start > timeoutMs) return;
+    // eslint-disable-next-line no-await-in-loop -- polling by nature
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+}
+
+// For asserting a push was *not* sent there's no event to poll for, so
+// this waits a fixed margin generous enough for that same async round-trip
+// to have completed either way.
+function waitForNoPushCall() {
+  return new Promise((resolve) => setTimeout(resolve, 300));
+}
 
 describe('GET /health', () => {
   it('returns status ok', async () => {
@@ -287,7 +327,7 @@ describe('POST /api/volunteers/registered-location and nearby alerting', () => {
 
     // alertNearbyVolunteers is fire-and-forget from the request handler,
     // so give its promise chain a tick to actually run before asserting.
-    await new Promise((resolve) => setImmediate(resolve));
+    await waitForPushCall();
 
     expect(webpush.sendNotification).toHaveBeenCalledTimes(1);
     const [subscriptionArg, payloadArg] = webpush.sendNotification.mock.calls[0];
@@ -317,7 +357,7 @@ describe('POST /api/volunteers/registered-location and nearby alerting', () => {
       locationSource: 'gps',
     });
 
-    await new Promise((resolve) => setImmediate(resolve));
+    await waitForNoPushCall();
 
     expect(webpush.sendNotification).not.toHaveBeenCalled();
   });
@@ -347,7 +387,7 @@ describe('POST /api/volunteers/registered-location and nearby alerting', () => {
     expect(res.body.data.nearbyAlertsSkipped).toBe(true);
     expect(res.body.data.hasGpsLocation).toBe(false);
 
-    await new Promise((resolve) => setImmediate(resolve));
+    await waitForNoPushCall();
 
     expect(webpush.sendNotification).not.toHaveBeenCalled();
   });
@@ -468,7 +508,11 @@ describe("Tier 1: anonymous public volunteers and I'll Help", () => {
       expect(rawHelper.name).not.toBe('Jamie Helper');
       expect(rawHelper.phone).not.toBe('5551234567');
       expect(rawHelper.name).not.toContain('Jamie');
-      expect(rawHelper.phone).not.toContain('555');
+      // Checking a short substring like '555' against high-entropy hex
+      // ciphertext is a coin flip (plenty of random hex strings happen to
+      // contain any given 3-digit run) - the full number is what actually
+      // must never appear.
+      expect(rawHelper.phone).not.toContain('5551234567');
       // encrypt() output shape: iv:authTag:ciphertext, all hex
       expect(rawHelper.name).toMatch(/^[0-9a-f]+:[0-9a-f]+:[0-9a-f]+$/);
       expect(rawHelper.phone).toMatch(/^[0-9a-f]+:[0-9a-f]+:[0-9a-f]+$/);
@@ -528,7 +572,7 @@ describe("Tier 1: anonymous public volunteers and I'll Help", () => {
       });
       expect(reportRes.status).toBe(201);
 
-      await new Promise((resolve) => setImmediate(resolve));
+      await waitForPushCall();
 
       expect(webpush.sendNotification).toHaveBeenCalled();
       const softCall = webpush.sendNotification.mock.calls.find((call) => {
@@ -601,50 +645,52 @@ describe('Call-token redirect (phone number never sent to the frontend)', () => 
     expect(res.status).toBe(410);
   });
 
-  it('expires a token after its TTL even if never redeemed (unit-level, direct module test)', () => {
-    jest.useFakeTimers();
-    try {
-      // Deliberately requires the module fresh rather than reusing the
-      // one imported at module scope for the HTTP tests above, so this
-      // doesn't share in-flight tokens with them.
-      jest.resetModules();
-      const { issueCallToken, consumeCallToken, TOKEN_TTL_MS } = require('./utils/callTokens');
-      const token = issueCallToken('5551230000');
-      jest.advanceTimersByTime(TOKEN_TTL_MS + 1000);
-      expect(consumeCallToken(token)).toBeNull();
-    } finally {
-      jest.useRealTimers();
-    }
+  it('expires a token after its TTL even if never redeemed', async () => {
+    const { issueCallToken, consumeCallToken } = require('./utils/callTokens');
+
+    const token = await issueCallToken(helperId);
+    // Expiry is computed by the database's own now() at insert time (see
+    // utils/callTokens.js), not JS's Date.now() - fake timers can't affect
+    // Postgres's clock, so this backdates the row directly instead of
+    // waiting out the real 5-minute TTL.
+    await pool.query("UPDATE call_tokens SET expires_at = now() - interval '1 second' WHERE token = $1", [token]);
+
+    expect(await consumeCallToken(token)).toBeNull();
   });
 });
 
-describe('purgeOldResolvedCases (bounds db.cases, which has no other size cap)', () => {
-  const { withDB, readDB } = require('./utils/db');
+describe('purgeOldResolvedCases (bounds the cases table, which has no other size cap)', () => {
+  const { createCase, resolveCase } = require('./utils/db');
   const { purgeOldResolvedCases, RESOLVED_CASE_RETENTION_MS } = require('./utils/purgeOldResolvedCases');
 
   it('removes a resolved case past the retention window, keeps a recently-resolved one, and never removes an open case regardless of age', async () => {
     const longAgo = new Date(Date.now() - RESOLVED_CASE_RETENTION_MS - 60 * 60 * 1000).toISOString();
-    const recently = new Date().toISOString();
 
-    await withDB((db) => {
-      db.cases.push(
-        { id: 'case_old_resolved', status: 'resolved', resolvedAt: longAgo, timestamp: longAgo, publicHelpers: [] },
-        {
-          id: 'case_recent_resolved',
-          status: 'resolved',
-          resolvedAt: recently,
-          timestamp: recently,
-          publicHelpers: [],
-        },
-        { id: 'case_old_but_open', status: 'open', timestamp: longAgo, publicHelpers: [] }
-      );
+    await createCase({ id: 'case_old_resolved', reportId: 'report_old_resolved', severity: 'mild', timestamp: longAgo });
+    await createCase({
+      id: 'case_recent_resolved',
+      reportId: 'report_recent_resolved',
+      severity: 'mild',
+      timestamp: new Date().toISOString(),
     });
+    await createCase({ id: 'case_old_but_open', reportId: 'report_old_but_open', severity: 'mild', timestamp: longAgo });
+
+    await resolveCase('case_old_resolved', 'tester@example.com');
+    await resolveCase('case_recent_resolved', 'tester@example.com');
+    // case_old_but_open is deliberately never resolved.
+
+    // resolveCase() always stamps resolved_at as now(); backdating it
+    // directly is how this simulates a case that was resolved long ago
+    // without waiting out the real 30-day retention window.
+    await pool.query('UPDATE cases SET resolved_at = $1 WHERE id = $2', [longAgo, 'case_old_resolved']);
 
     const { purgedCount } = await purgeOldResolvedCases();
     expect(purgedCount).toBe(1);
 
-    const db = readDB();
-    const ids = db.cases.map((c) => c.id);
+    const { rows } = await pool.query('SELECT id FROM cases WHERE id = ANY($1::text[])', [
+      ['case_old_resolved', 'case_recent_resolved', 'case_old_but_open'],
+    ]);
+    const ids = rows.map((r) => r.id);
     expect(ids).not.toContain('case_old_resolved');
     expect(ids).toContain('case_recent_resolved');
     expect(ids).toContain('case_old_but_open');
@@ -684,7 +730,7 @@ describe('DELETE /api/volunteers/public-location/:deviceId (Tier 1 opt-out)', ()
       locationSource: 'gps',
     });
 
-    await new Promise((resolve) => setImmediate(resolve));
+    await waitForNoPushCall();
 
     const wasCalledForOptedOutDevice = webpush.sendNotification.mock.calls.some(
       (call) => call[0].endpoint === subscription.endpoint
