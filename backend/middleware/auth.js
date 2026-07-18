@@ -1,7 +1,15 @@
 const jwt = require('jsonwebtoken');
 const { error } = require('../utils/respond');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-me';
+const JWT_SECRET = process.env.JWT_SECRET;
+
+if (!JWT_SECRET) {
+  throw new Error(
+    'JWT_SECRET environment variable is required. Without it the server would either ' +
+      'refuse to start (safe) or silently sign tokens with a guessable default (not safe). ' +
+      'Set JWT_SECRET in your .env file or deployment environment.'
+  );
+}
 
 function requireAuth(req, res, next) {
   const header = req.headers.authorization || '';

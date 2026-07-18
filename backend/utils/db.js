@@ -45,4 +45,32 @@ function writeDB(data) {
   }
 }
 
-module.exports = { DB_PATH, initializeDB, readDB, writeDB };
+// readDB() and writeDB() are each individually synchronous, but a
+// read-mutate-write sequence with an `await` in between (e.g. bcrypt
+// hashing during registration) is not atomic: a second request can read
+// the same pre-mutation snapshot before the first request writes, and
+// whichever write happens last silently discards the other's change.
+// This queue serializes every read-mutate-write cycle in the app through
+// a single promise chain so they can never interleave, without needing a
+// real database transaction.
+let writeQueue = Promise.resolve();
+
+function withDB(mutator) {
+  const result = writeQueue.then(async () => {
+    const db = readDB();
+    const returnValue = await mutator(db);
+    writeDB(db);
+    return returnValue;
+  });
+
+  // Keep the queue moving even if this mutation throws, so one failed
+  // request doesn't permanently stall every later request.
+  writeQueue = result.then(
+    () => {},
+    () => {}
+  );
+
+  return result;
+}
+
+module.exports = { DB_PATH, initializeDB, readDB, writeDB, withDB };
