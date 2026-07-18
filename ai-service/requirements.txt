@@ -2,6 +2,7 @@ fastapi==0.139.0
 uvicorn==0.24.0
 pillow==12.3.0
 numpy==1.26.4
+python-dotenv==1.0.1
 
 # CPU-only builds, pulled from an extra index (not --index-url, that
 # would replace PyPI entirely and break the packages listed above).
