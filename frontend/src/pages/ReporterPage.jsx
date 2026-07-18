@@ -62,6 +62,7 @@ export default function ReporterPage({ onOpenFirstAidLibrary }) {
   const [result, setResult] = useState(null)
   const [submitError, setSubmitError] = useState('')
   const [aiFallback, setAiFallback] = useState(false)
+  const [locationUncertain, setLocationUncertain] = useState(false)
   const [overrideSeverity, setOverrideSeverity] = useState(null)
   const [activeCaseCount, setActiveCaseCount] = useState(0)
   const [reportId, setReportId] = useState(null)
@@ -86,15 +87,26 @@ export default function ReporterPage({ onOpenFirstAidLibrary }) {
     setAnalyzing(true)
     setSubmitError('')
     setAiFallback(false)
+    setLocationUncertain(false)
     setOverrideSeverity(null)
 
     const base64 = camera.image.split(',')[1]
-    const { data, error, aiFallback: fellBack } = await submitReport({
+    // geo.status === 'granted' is the only case where lat/lng are the
+    // device's real coordinates; 'denied'/'fallback'/'requesting' all mean
+    // geo.lat/lng are the hardcoded city-center default (see useGeolocation),
+    // which the backend must not use to fan out nearby-volunteer alerts -
+    // that would notify people near a city the animal may not even be in.
+    const {
+      data,
+      error,
+      aiFallback: fellBack,
+    } = await submitReport({
       image: base64,
       notes,
       location: manualLocation || 'Location detected via GPS',
       lat: geo.lat,
       lng: geo.lng,
+      locationSource: geo.status === 'granted' ? 'gps' : 'fallback',
     })
 
     setAnalyzing(false)
@@ -105,6 +117,7 @@ export default function ReporterPage({ onOpenFirstAidLibrary }) {
     }
 
     setAiFallback(Boolean(fellBack))
+    setLocationUncertain(Boolean(data.nearbyAlertsSkipped))
     setResult(data.result)
     setReportId(data.id)
   }
@@ -283,11 +296,7 @@ export default function ReporterPage({ onOpenFirstAidLibrary }) {
                 <Badge severity={displaySeverity} />
               </div>
 
-              {result.severity_note && (
-                <p style={{ color: 'var(--color-text-muted)', fontSize: 'var(--font-size-xs)', marginBottom: 'var(--space-2)' }}>
-                  {result.severity_note}
-                </p>
-              )}
+              {result.severity_note && <p className="severity-disclaimer">{result.severity_note}</p>}
 
               <div className="severity-override">
                 <p className="severity-override-label">Does this look right?</p>
@@ -344,6 +353,14 @@ export default function ReporterPage({ onOpenFirstAidLibrary }) {
             <h2>Help is on the way</h2>
             <p>We've alerted rescue teams in your area</p>
           </div>
+
+          {locationUncertain && (
+            <div className="severity-disclaimer">
+              We couldn't get your exact location, so we didn't send nearby-volunteer alerts for this report - they
+              would have gone to the wrong area. Your report is still visible to registered responders. If you can,
+              retake the report with location access enabled, or contact local rescue services directly.
+            </div>
+          )}
 
           <div className="dispatched-photo-row">
             <p style={{ fontWeight: 600 }}>Your report was submitted</p>

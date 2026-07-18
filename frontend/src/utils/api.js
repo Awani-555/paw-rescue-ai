@@ -41,10 +41,10 @@ async function request(path, { method = 'GET', body, auth = false, timeout = DEF
   }
 }
 
-export async function submitReport({ image, notes, location, lat, lng }) {
+export async function submitReport({ image, notes, location, lat, lng, locationSource }) {
   const result = await request('/api/report', {
     method: 'POST',
-    body: { image, notes, location, lat, lng },
+    body: { image, notes, location, lat, lng, locationSource },
   })
   if (result.data?.result?.species === 'Unknown' && result.data?.result?.confidence <= 0.5) {
     result.aiFallback = true
