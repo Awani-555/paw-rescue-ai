@@ -28,10 +28,10 @@ export default function HelpOptInPrompt() {
     setBusy(true)
     setError('')
 
-    const subscription = await push.subscribe()
+    const { subscription, error: subscribeError } = await push.subscribe()
     if (!subscription) {
       setBusy(false)
-      setError(push.error || 'Could not enable alerts on this device.')
+      setError(subscribeError || 'Could not enable alerts on this device.')
       return
     }
 
@@ -76,8 +76,7 @@ export default function HelpOptInPrompt() {
     <div className="help-optin-card">
       <p className="help-optin-title">Get alerted if an animal needs help near you</p>
       <p className="help-optin-body">
-        No account needed. You'll only ever see a general nearby alert, never exact details, unless you choose to
-        help.
+        No account needed. You'll only ever see a general nearby alert, never exact details, unless you choose to help.
       </p>
       {error && <div className="form-error">{error}</div>}
       <div className="help-optin-actions">

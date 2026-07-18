@@ -20,15 +20,25 @@ export function usePushSubscription() {
   const [status, setStatus] = useState('idle')
   const [error, setError] = useState(null)
 
+  // Returns { subscription, error } rather than relying on callers to read
+  // the `error` state back off this hook's return value: a state update
+  // scheduled by setError() here doesn't appear on the `push` object a
+  // caller already holds a reference to until the *next* render, so
+  // reading push.error immediately after awaiting subscribe() would
+  // always see the stale (pre-call) value. Returning the message directly
+  // sidesteps that entirely.
   const subscribe = useCallback(async () => {
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
       setStatus('unsupported')
-      return null
+      const message = 'Push notifications are not supported on this browser.'
+      setError(message)
+      return { subscription: null, error: message }
     }
     if (!VAPID_PUBLIC_KEY) {
       setStatus('error')
-      setError('Push notifications are not configured for this deployment.')
-      return null
+      const message = 'Push notifications are not configured for this deployment.'
+      setError(message)
+      return { subscription: null, error: message }
     }
 
     setStatus('requesting')
@@ -41,14 +51,17 @@ export function usePushSubscription() {
       const existingRegistration = await navigator.serviceWorker.getRegistration()
       if (!existingRegistration) {
         setStatus('error')
-        setError('Push notifications need a production build. They are not available in local dev.')
-        return null
+        const message = 'Push notifications need a production build. They are not available in local dev.'
+        setError(message)
+        return { subscription: null, error: message }
       }
 
       const permission = await Notification.requestPermission()
       if (permission !== 'granted') {
         setStatus('denied')
-        return null
+        const message = 'Notification permission was denied. Enable notifications for this site in your browser settings.'
+        setError(message)
+        return { subscription: null, error: message }
       }
 
       const registration = await navigator.serviceWorker.ready
@@ -61,11 +74,12 @@ export function usePushSubscription() {
       }
 
       setStatus('granted')
-      return subscription.toJSON()
-    } catch (err) {
+      return { subscription: subscription.toJSON(), error: null }
+    } catch {
       setStatus('error')
-      setError('Could not enable push notifications on this device.')
-      return null
+      const message = 'Could not enable push notifications on this device.'
+      setError(message)
+      return { subscription: null, error: message }
     }
   }, [])
 

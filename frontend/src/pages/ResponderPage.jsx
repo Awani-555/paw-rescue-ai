@@ -73,9 +73,9 @@ export default function ResponderPage({ onBack, highlightCaseId }) {
       return
     }
 
-    const subscription = await push.subscribe()
+    const { subscription, error: subscribeError } = await push.subscribe()
     if (!subscription) {
-      setAlertsError(push.error || 'Could not enable alerts. Check notification permissions for this site.')
+      setAlertsError(subscribeError || 'Could not enable alerts. Check notification permissions for this site.')
       return
     }
 
@@ -149,9 +149,7 @@ export default function ResponderPage({ onBack, highlightCaseId }) {
         />
       )}
 
-      {!loading && !error && view === 'map' && (
-        <CaseMap cases={cases} center={{ lat: geo.lat, lng: geo.lng }} />
-      )}
+      {!loading && !error && view === 'map' && <CaseMap cases={cases} center={{ lat: geo.lat, lng: geo.lng }} />}
     </div>
   )
 }
