@@ -1,7 +1,6 @@
-fastapi==0.104.1
+fastapi==0.139.0
 uvicorn==0.24.0
-python-multipart==0.0.6
-pillow==10.0.1
+pillow==12.3.0
 numpy==1.26.4
 
 # CPU-only builds, pulled from an extra index (not --index-url, that
