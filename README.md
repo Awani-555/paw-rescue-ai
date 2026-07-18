@@ -40,17 +40,23 @@ A three-service platform for reporting injured animals: an anonymous reporter fl
 ```
 Frontend (React + Vite, PWA)  --POST /api/report-->  Backend (Express)
                                                             |
-                                              +-------------+-------------+
-                                              |                           |
-                                     AI service (FastAPI)         facilities.json / db.json
-                                     species + severity triage    (Haversine distance)
+                                    +-----------------------+-----------------------+
+                                    |                        |                      |
+                           AI service (FastAPI)     Postgres (Supabase)     facilities.json
+                     species + severity triage    cases/responders/etc.   (Haversine distance)
 ```
 
 | Service | Port | Stack |
 |---|---|---|
 | Frontend | 5173 (dev) | React 18, Vite, vanilla CSS design tokens |
-| Backend | 5000 | Node.js, Express, JWT auth, Helmet, rate limiting |
+| Backend | 5000 | Node.js, Express, JWT auth, Helmet, rate limiting, `pg` |
 | AI service | 8001 | Python, FastAPI, PyTorch/torchvision (MobileNetV2), Pillow, NumPy |
+
+**Deployment**: frontend on Vercel, backend + AI service on Render (`render.yaml` at the repo root; AI service is a private Render service, not reachable from the public internet at all - only the backend can call it, over a shared-secret-authenticated request), Postgres on Supabase. Two free-tier behaviors worth knowing before assuming something's broken:
+- **Render's free services cold-start** after ~15 minutes of no traffic - the first request after a quiet period can take 30-60s while the instance spins back up.
+- **Supabase free projects pause after 7 days of no activity** and need a manual "restore" click from the Supabase dashboard before the database responds again.
+
+Supabase's *direct* database connection host (`db.<ref>.supabase.co`) is IPv6-only; use the connection **pooler** string instead (Supabase dashboard → Project Settings → Database → Connection Pooling → Connection string, mode: Transaction) for `DATABASE_URL`, since many hosts/networks - including some sandboxes and CI runners - have no IPv6 egress at all.
 
 ## Prerequisites
 
@@ -81,8 +87,9 @@ This pulls in CPU-only PyTorch/torchvision (a few hundred MB) and downloads Mobi
 ```bash
 cd backend
 npm install
-cp .env.example .env         # fill in JWT_SECRET with a random string
+cp .env.example .env         # fill in JWT_SECRET, DATABASE_URL (Supabase pooler string - see Architecture), etc.
 ```
+Tables are created automatically on first boot (`initializeDB()` applies every file in `migrations/` - they're all `CREATE TABLE IF NOT EXISTS`, safe to run repeatedly). If you have existing `db.json`/`volunteer-locations.json` data worth keeping from before this project used Postgres, run `node migrations/migrate-json-to-postgres.js` once by hand to bring it over.
 
 **Frontend**
 ```bash
@@ -90,6 +97,7 @@ cd frontend
 npm install
 cp .env.example .env
 ```
+When deploying to Vercel, set `VITE_BACKEND_URL` in the project's environment variables to the deployed Render backend's URL - it's read at build time, so it must be set before building, not just at runtime.
 
 ## Running the application
 
@@ -129,12 +137,14 @@ paw-rescue/
   backend/
     server.js
     middleware/                auth, sanitize, request logger
-    routes/                    auth, cases
-    utils/                     db, distance, response helpers
+    routes/                    auth, cases, volunteers
+    utils/                     db (Postgres queries), pgPool, distance, response helpers
+    migrations/                001_init.sql, apply.js, migrate-json-to-postgres.js (one-time, manual)
     facilities.json
   ai-service/
     main.py
     requirements.txt
+  render.yaml                  Render Blueprint: backend (public) + ai-service (private)
   .github/workflows/ci.yml
 ```
 
