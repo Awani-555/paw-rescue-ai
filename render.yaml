@@ -1,0 +1,57 @@
+# Render Blueprint - deploys the backend as a public web service and
+# ai-service as a private service (no public internet exposure at all;
+# only reachable from other services in this account over Render's
+# private network). See https://render.com/docs/blueprint-spec.
+#
+# Env vars marked `sync: false` are secrets - Render prompts for them once
+# in the dashboard during the initial Blueprint setup and never stores
+# their values in this file or in git.
+services:
+  - type: web
+    name: paw-rescue-backend
+    runtime: node
+    rootDir: backend
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # Render assigns its own PORT and injects it automatically; server.js
+      # already falls back to process.env.PORT || 5000.
+      - key: FRONTEND_URL
+        sync: false # the deployed Vercel frontend's URL, e.g. https://paw-rescue.vercel.app
+      - key: DATABASE_URL
+        sync: false # Supabase connection *pooler* string (not the direct db.<ref>.supabase.co host - see README)
+      - key: JWT_SECRET
+        sync: false
+      - key: VAPID_PUBLIC_KEY
+        sync: false
+      - key: VAPID_PRIVATE_KEY
+        sync: false
+      - key: VAPID_SUBJECT
+        sync: false
+      - key: AI_SERVICE_TOKEN
+        sync: false # must match ai-service's INTERNAL_SERVICE_TOKEN exactly
+      - key: HELPER_DATA_ENCRYPTION_KEY
+        sync: false
+      - key: ALERT_RADIUS_METERS
+        value: '100'
+      - key: AI_SERVICE_URL
+        value:
+          fromService:
+            name: paw-rescue-ai-service
+            type: pserv
+            property: hostport
+
+  - type: pserv
+    name: paw-rescue-ai-service
+    runtime: python
+    rootDir: ai-service
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: INTERNAL_SERVICE_TOKEN
+        sync: false # must match the backend's AI_SERVICE_TOKEN exactly
