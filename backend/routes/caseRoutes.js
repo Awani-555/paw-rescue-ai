@@ -1,5 +1,5 @@
 const express = require('express');
-const { readDB, writeDB } = require('../utils/db');
+const { readDB, withDB } = require('../utils/db');
 const { calculateDistance } = require('../utils/distance');
 const { success, error } = require('../utils/respond');
 const { isValidCoordinate } = require('../middleware/sanitize');
@@ -34,36 +34,53 @@ router.get('/', (req, res) => {
   return success(res, { cases: activeCases });
 });
 
-router.post('/:id/respond', (req, res) => {
-  const db = readDB();
-  const caseItem = db.cases.find((c) => c.id === req.params.id);
+router.post('/:id/respond', async (req, res) => {
+  try {
+    const caseItem = await withDB((db) => {
+      const found = db.cases.find((c) => c.id === req.params.id);
+      if (!found) return null;
 
-  if (!caseItem) {
-    return error(res, 404, 'CASE_NOT_FOUND', 'This case could not be found.');
+      found.status = 'responding';
+      found.respondedBy = req.responder?.email || null;
+      found.respondedAt = new Date().toISOString();
+      return found;
+    });
+
+    if (!caseItem) {
+      return error(res, 404, 'CASE_NOT_FOUND', 'This case could not be found.');
+    }
+    return success(res, { case: caseItem });
+  } catch (err) {
+    console.error('Error in /api/cases/:id/respond:', err);
+    return error(res, 500, 'INTERNAL_ERROR', 'Something went wrong. Please try again.');
   }
-
-  caseItem.status = 'responding';
-  caseItem.respondedBy = req.responder?.email || null;
-  caseItem.respondedAt = new Date().toISOString();
-  writeDB(db);
-
-  return success(res, { case: caseItem });
 });
 
-router.post('/:id/resolve', (req, res) => {
-  const db = readDB();
-  const caseItem = db.cases.find((c) => c.id === req.params.id);
+router.post('/:id/resolve', async (req, res) => {
+  try {
+    const caseItem = await withDB((db) => {
+      const found = db.cases.find((c) => c.id === req.params.id);
+      if (!found) return null;
 
-  if (!caseItem) {
-    return error(res, 404, 'CASE_NOT_FOUND', 'This case could not be found.');
+      found.status = 'resolved';
+      found.resolvedBy = req.responder?.email || null;
+      found.resolvedAt = new Date().toISOString();
+      // Public helper contact info only needs to live long enough for the
+      // reporter to call them; once the case is resolved, there's nothing
+      // left to coordinate, so purge it immediately rather than waiting
+      // for the 48h sweep (utils/purgeExpiredHelpers.js).
+      found.publicHelpers = [];
+      return found;
+    });
+
+    if (!caseItem) {
+      return error(res, 404, 'CASE_NOT_FOUND', 'This case could not be found.');
+    }
+    return success(res, { case: caseItem });
+  } catch (err) {
+    console.error('Error in /api/cases/:id/resolve:', err);
+    return error(res, 500, 'INTERNAL_ERROR', 'Something went wrong. Please try again.');
   }
-
-  caseItem.status = 'resolved';
-  caseItem.resolvedBy = req.responder?.email || null;
-  caseItem.resolvedAt = new Date().toISOString();
-  writeDB(db);
-
-  return success(res, { case: caseItem });
 });
 
 module.exports = router;
