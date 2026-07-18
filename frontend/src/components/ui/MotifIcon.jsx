@@ -3,7 +3,6 @@ import motifsUrl from '../../assets/motifs.png'
 const SHEET_WIDTH = 1792
 const SHEET_HEIGHT = 592
 const ICON_COUNT = 3
-const SLOT_WIDTH = SHEET_WIDTH / ICON_COUNT
 
 // motifs.png is a single 1792x592 sprite sheet with three circular icons
 // (camera, phone/AI, location+home) laid out side by side. Slicing it with

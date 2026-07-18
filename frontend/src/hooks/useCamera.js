@@ -62,7 +62,7 @@ export function useCamera() {
       const { base64, file: compressedFile } = await compressImage(file)
       setImage(base64)
       setImageFile(compressedFile)
-    } catch (err) {
+    } catch {
       setError('Could not process this image. Please try another.')
     }
   }, [])
