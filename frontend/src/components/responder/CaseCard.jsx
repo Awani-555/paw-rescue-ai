@@ -1,13 +1,25 @@
+import { useEffect, useRef } from 'react'
 import Card from '../ui/Card'
 import Badge from '../ui/Badge'
 import Button from '../ui/Button'
 import { formatDistance, formatTimeAgo } from '../../utils/formatters'
 
-export default function CaseCard({ caseItem, onRespond, onResolve, onViewMap }) {
+export default function CaseCard({ caseItem, onRespond, onResolve, onViewMap, highlighted = false }) {
   const isResponding = caseItem.status === 'responding'
+  const cardRef = useRef(null)
+
+  useEffect(() => {
+    if (highlighted) {
+      cardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }
+  }, [highlighted])
 
   return (
-    <Card className="case-card">
+    <Card
+      ref={cardRef}
+      className={`case-card${highlighted ? ' case-card-highlighted' : ''}`}
+      style={{ scrollMarginTop: 80 }}
+    >
       {caseItem.image && <img className="case-card-thumb" src={caseItem.image} alt="Animal" loading="lazy" />}
       <div className="case-card-body">
         <div className="case-card-top">

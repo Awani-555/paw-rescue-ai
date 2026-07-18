@@ -10,12 +10,16 @@ import LocationDetector from '../components/reporter/LocationDetector'
 import FirstAidCard from '../components/reporter/FirstAidCard'
 import FacilityCard from '../components/reporter/FacilityCard'
 import SOSButton from '../components/reporter/SOSButton'
+import HelpOptInPrompt from '../components/reporter/HelpOptInPrompt'
+import CallHelperButton from '../components/reporter/CallHelperButton'
 import { useCamera } from '../hooks/useCamera'
 import { useGeolocation } from '../hooks/useGeolocation'
 import { useOffline } from '../hooks/useOffline'
-import { submitReport, getReports } from '../utils/api'
+import { submitReport, getReports, getCaseHelpers } from '../utils/api'
 import logoUrl from '../assets/logo.png'
 import heroUrl from '../assets/hero.png'
+
+const HELPER_POLL_MS = 20000
 
 const STEPS = { LANDING: 'landing', CAPTURE: 'capture', CONFIRM: 'confirm', DISPATCHED: 'dispatched' }
 
@@ -60,6 +64,9 @@ export default function ReporterPage({ onOpenFirstAidLibrary }) {
   const [aiFallback, setAiFallback] = useState(false)
   const [overrideSeverity, setOverrideSeverity] = useState(null)
   const [activeCaseCount, setActiveCaseCount] = useState(0)
+  const [reportId, setReportId] = useState(null)
+  const [helpers, setHelpers] = useState([])
+  const caseId = reportId ? `case_${reportId}` : null
 
   const camera = useCamera()
   const geo = useGeolocation()
@@ -99,7 +106,26 @@ export default function ReporterPage({ onOpenFirstAidLibrary }) {
 
     setAiFallback(Boolean(fellBack))
     setResult(data.result)
+    setReportId(data.id)
   }
+
+  // Public (Tier 1) helper offers arrive asynchronously from strangers,
+  // there's no realtime channel in this app, so the dispatched screen
+  // polls for them while it's the active step rather than only fetching
+  // once on mount.
+  useEffect(() => {
+    if (step !== STEPS.DISPATCHED || !caseId) return undefined
+
+    const fetchHelpers = () => {
+      getCaseHelpers(caseId).then(({ data }) => {
+        if (data?.helpers) setHelpers(data.helpers)
+      })
+    }
+
+    fetchHelpers()
+    const interval = setInterval(fetchHelpers, HELPER_POLL_MS)
+    return () => clearInterval(interval)
+  }, [step, caseId])
 
   const handleSubmitReport = () => {
     setStep(STEPS.DISPATCHED)
@@ -131,49 +157,52 @@ export default function ReporterPage({ onOpenFirstAidLibrary }) {
             <img src={logoUrl} alt="PawRescue AI" className="landing-logo-img" />
           </div>
 
-          <div className="landing-hero">
+          <div className="landing-grid">
             <img src={heroUrl} alt="" className="landing-hero-img" />
-            <h1>Every life counts.</h1>
-            <p>Found an injured animal? We'll help you help them.</p>
-          </div>
 
-          <div className="landing-actions">
-            <Button variant="primary" onClick={startReport} className="btn-full">
-              Report Injured Animal
-              <ArrowRightIcon width={18} height={18} />
-            </Button>
-            <Button variant="ghost" onClick={onOpenFirstAidLibrary} className="btn-full">
-              Browse First Aid Guide
-            </Button>
-          </div>
+            <div className="landing-hero-text">
+              <h1>Every life counts.</h1>
+              <p>Found an injured animal? We'll help you help them.</p>
 
-          {activeCaseCount > 0 && (
-            <div className="active-cases-pill">
-              <span className="active-cases-dot" />
-              {activeCaseCount} active case{activeCaseCount === 1 ? '' : 's'} in your area
+              <div className="landing-actions">
+                <Button variant="primary" onClick={startReport} className="btn-full">
+                  Report Injured Animal
+                  <ArrowRightIcon width={18} height={18} />
+                </Button>
+                <Button variant="ghost" onClick={onOpenFirstAidLibrary} className="btn-full">
+                  Browse First Aid Guide
+                </Button>
+              </div>
+
+              {activeCaseCount > 0 && (
+                <div className="active-cases-pill">
+                  <span className="active-cases-dot" />
+                  {activeCaseCount} active case{activeCaseCount === 1 ? '' : 's'} in your area
+                </div>
+              )}
             </div>
-          )}
+          </div>
 
           <div className="section-divider">
             <span>How it works</span>
           </div>
 
           <div className="how-it-works">
-            <div className="how-step">
+            <div className="how-step" style={{ '--stagger': 0 }}>
               <MotifIcon index={0} />
               <div>
                 <strong>Take a photo</strong>
                 <p>Point your camera at the injured animal</p>
               </div>
             </div>
-            <div className="how-step">
+            <div className="how-step" style={{ '--stagger': 1 }}>
               <MotifIcon index={1} />
               <div>
                 <strong>Get instant guidance</strong>
                 <p>AI identifies species and suggests first aid</p>
               </div>
             </div>
-            <div className="how-step">
+            <div className="how-step" style={{ '--stagger': 2 }}>
               <MotifIcon index={2} />
               <div>
                 <strong>Help is dispatched</strong>
@@ -189,6 +218,8 @@ export default function ReporterPage({ onOpenFirstAidLibrary }) {
               <p>The first aid guide works without signal. Tap "Browse First Aid Guide" to save it for offline use.</p>
             </div>
           </div>
+
+          <HelpOptInPrompt />
         </div>
       )}
 
@@ -326,9 +357,22 @@ export default function ReporterPage({ onOpenFirstAidLibrary }) {
           <h3 className="nearest-help-heading">Nearest help:</h3>
           <div id="facilities-section">
             {(result?.nearestFacilities || []).map((facility, idx) => (
-              <FacilityCard key={idx} facility={facility} userLocation={{ lat: geo.lat, lng: geo.lng }} />
+              <FacilityCard key={idx} facility={facility} userLocation={{ lat: geo.lat, lng: geo.lng }} index={idx} />
             ))}
           </div>
+
+          {helpers.length > 0 && (
+            <div className="public-helpers-section">
+              <h3 className="nearest-help-heading">
+                {helpers.length} nearby {helpers.length === 1 ? 'person has' : 'people have'} offered to help
+              </h3>
+              <div className="public-helpers-list">
+                {helpers.map((helper) => (
+                  <CallHelperButton key={helper.id} caseId={caseId} helperId={helper.id} name={helper.name} />
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className="while-you-wait">
             <h3 style={{ marginBottom: 'var(--space-3)' }}>While you wait:</h3>
