@@ -6,7 +6,7 @@ export default function FirstAidCard({ steps, doNot }) {
       <h3>Immediate first aid</h3>
       <ol className="first-aid-steps">
         {steps.map((step, idx) => (
-          <li key={idx}>{step}</li>
+          <li key={idx} style={{ '--i': idx }}>{step}</li>
         ))}
       </ol>
 

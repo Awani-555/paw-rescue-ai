@@ -1,13 +1,13 @@
 import Card from '../ui/Card'
 import { formatDistance } from '../../utils/formatters'
 
-export default function FacilityCard({ facility, userLocation }) {
+export default function FacilityCard({ facility, userLocation, index = 0 }) {
   const originLat = userLocation?.lat ?? 26.8467
   const originLng = userLocation?.lng ?? 80.9462
   const directionsUrl = `https://www.google.com/maps/dir/?api=1&origin=${originLat},${originLng}&destination=${facility.lat},${facility.lng}`
 
   return (
-    <Card className="facility-card">
+    <Card className="facility-card" style={{ '--i': index }}>
       <div className="facility-card-top">
         <div>
           <div className="facility-name">{facility.name}</div>
