@@ -16,6 +16,7 @@ venv/
 
 # Database and uploads
 backend/db.json
+backend/volunteer-locations.json
 backend/uploads/
 
 # Build output
