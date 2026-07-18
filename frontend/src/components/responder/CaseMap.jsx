@@ -3,9 +3,9 @@ import 'leaflet/dist/leaflet.css'
 import { formatTimeAgo } from '../../utils/formatters'
 
 const SEVERITY_COLOR = {
-  critical: '#C0392B',
-  urgent: '#D4820A',
-  mild: '#5B8A6F',
+  critical: '#C4291C',
+  urgent: '#B9821C',
+  mild: '#33473A',
 }
 
 const LUCKNOW_CENTER = [26.8467, 80.9462]

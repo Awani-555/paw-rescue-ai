@@ -1,32 +1,42 @@
 :root {
-  /* Colors: warm, calm, trustworthy */
-  --color-cream: #F9F6F1;
-  --color-warm-white: #FDFCFA;
-  --color-sand: #E8E0D5;
-  --color-tan: #C4A882;
-  --color-brown: #8B6F47;
-  --color-dark: #2C2416;
-  --color-text: #3D3022;
-  --color-text-muted: #7A6A52;
-  --color-text-light: #B5A48C;
+  /* Colors: Field Rescue Guide — warm khaki paper, deep pine, burnt-orange
+     action color. A rescue manual, not a wellness app. */
+  --color-cream: #ede8da;
+  --color-warm-white: #f6f2e8;
+  --color-sand: #c9c0a3;
+  --color-sand-rgb: 201, 192, 163;
+  --color-tan: #a79e80;
+  --color-brown: #5c5a49;
+  --color-dark: #232620;
+  --color-text: #232620;
+  --color-text-muted: #5c5a49;
+  --color-text-light: #8c8871;
 
-  /* Accent: one green, calm not alarming */
-  --color-accent: #5B8A6F;
-  --color-accent-light: #EBF3EE;
-  --color-accent-dark: #3D6B52;
-  --color-accent-rgb: 91, 138, 111;
+  /* Accent: burnt orange for calls to action; pine green carries brand/identity */
+  --color-accent: #e8590c;
+  --color-accent-light: #fbe3d3;
+  --color-accent-dark: #b8430a;
+  --color-accent-rgb: 232, 89, 12;
 
-  /* Severity colors: muted not harsh */
-  --color-critical: #C0392B;
-  --color-critical-bg: #FDF0EE;
-  --color-urgent: #D4820A;
-  --color-urgent-bg: #FDF6EA;
-  --color-mild: #5B8A6F;
-  --color-mild-bg: #EBF3EE;
+  --color-pine: #33473a;
+  --color-pine-deep: #1f2e26;
+  --color-pine-tint: #dfe6de;
+  --color-pine-rgb: 51, 71, 58;
 
-  /* Typography */
-  --font-serif: 'Playfair Display', Georgia, serif;
-  --font-sans: 'Inter', -apple-system, sans-serif;
+  /* Severity colors: legible, not desaturated into blandness */
+  --color-critical: #c4291c;
+  --color-critical-bg: #f5ddd9;
+  --color-urgent: #b9821c;
+  --color-urgent-bg: #f3e7cd;
+  --color-mild: #33473a;
+  --color-mild-bg: #dfe6de;
+
+  /* Typography: a bold condensed display face for headlines, a workhorse
+     sans for body copy, and a monospace reserved for labels/tags/metadata
+     — the "field manual" texture that separates data from prose. */
+  --font-serif: 'Big Shoulders', 'Arial Narrow', sans-serif;
+  --font-sans: 'Public Sans', -apple-system, sans-serif;
+  --font-mono: 'IBM Plex Mono', 'Courier New', monospace;
   --font-size-xs: 0.75rem;
   --font-size-sm: 0.875rem;
   --font-size-base: 1rem;
@@ -63,14 +73,14 @@
   /* Elevation. Shadows carry a faint warm/accent tint instead of pure
      black so cards feel like they belong to this palette even at rest,
      not like a generic UI-kit default. */
-  --shadow-xs: 0 1px 2px rgba(44, 36, 22, 0.06);
-  --shadow-sm: 0 2px 8px rgba(44, 36, 22, 0.07), 0 1px 2px rgba(44, 36, 22, 0.06);
-  --shadow-md: 0 8px 24px rgba(44, 36, 22, 0.09), 0 2px 6px rgba(44, 36, 22, 0.06);
-  --shadow-lg: 0 20px 48px rgba(44, 36, 22, 0.14), 0 4px 12px rgba(44, 36, 22, 0.08);
-  --shadow-xl: 0 32px 72px rgba(44, 36, 22, 0.18), 0 8px 20px rgba(44, 36, 22, 0.10);
+  --shadow-xs: 0 1px 2px rgba(35, 38, 32, 0.06);
+  --shadow-sm: 0 2px 8px rgba(35, 38, 32, 0.07), 0 1px 2px rgba(35, 38, 32, 0.06);
+  --shadow-md: 0 8px 24px rgba(35, 38, 32, 0.09), 0 2px 6px rgba(35, 38, 32, 0.06);
+  --shadow-lg: 0 20px 48px rgba(35, 38, 32, 0.14), 0 4px 12px rgba(35, 38, 32, 0.08);
+  --shadow-xl: 0 32px 72px rgba(35, 38, 32, 0.18), 0 8px 20px rgba(35, 38, 32, 0.1);
   --shadow-accent: 0 12px 28px -8px rgba(var(--color-accent-rgb), 0.45);
   --shadow-accent-lg: 0 20px 44px -10px rgba(var(--color-accent-rgb), 0.5);
-  --shadow-inset: inset 0 1px 2px rgba(44, 36, 22, 0.06);
+  --shadow-inset: inset 0 1px 2px rgba(35, 38, 32, 0.06);
 
   /* Motion. Two feels: "snap" for things that should feel immediate and
      tactile (buttons, taps), "glide" for things that should feel calm
@@ -102,21 +112,42 @@
 }
 
 @keyframes slideUp {
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to   { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes riseIn {
-  from { opacity: 0; transform: translateY(16px) scale(0.98); }
-  to   { opacity: 1; transform: translateY(0) scale(1); }
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 @keyframes floatSlow {
-  0%, 100% { transform: translateY(0) rotate(0deg); }
-  50% { transform: translateY(-14px) rotate(1.5deg); }
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-14px) rotate(1.5deg);
+  }
 }

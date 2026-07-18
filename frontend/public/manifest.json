@@ -4,8 +4,8 @@
   "description": "Report injured animals and get immediate help",
   "start_url": ".",
   "display": "standalone",
-  "background_color": "#F9F6F1",
-  "theme_color": "#5B8A6F",
+  "background_color": "#EDE8DA",
+  "theme_color": "#33473A",
   "orientation": "portrait",
   "icons": [
     { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
