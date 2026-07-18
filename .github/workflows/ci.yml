@@ -13,6 +13,12 @@ jobs:
       JWT_SECRET: test-secret-for-ci
       PORT: 5001
       NODE_ENV: test
+      # Supabase pooler connection string (not the direct db.<ref>.supabase.co
+      # host - see README). Tests run against an isolated test_paw_rescue
+      # schema inside this same database (server.test.js sets PG_SCHEMA
+      # itself), truncated at the start of every run, so this never touches
+      # real data. Must be added as a repository secret - see README.
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
