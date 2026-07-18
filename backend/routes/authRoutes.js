@@ -1,7 +1,7 @@
 const crypto = require('crypto');
 const express = require('express');
 const bcrypt = require('bcryptjs');
-const { readDB, withDB } = require('../utils/db');
+const { getResponderByEmail, createResponder } = require('../utils/db');
 const { signToken } = require('../middleware/auth');
 const { success, error } = require('../utils/respond');
 
@@ -30,28 +30,20 @@ router.post('/register', async (req, res) => {
       return error(res, 400, 'VALIDATION_ERROR', 'Email must be a string.');
     }
 
-    // The existing-email check and the eventual write both need to happen
-    // inside the same serialized DB transaction: bcrypt.hash below yields
-    // the event loop, and without this, two concurrent registrations with
-    // the same email could both pass the check before either writes.
-    const outcome = await withDB(async (db) => {
-      const existing = db.responders.find((r) => r.email.toLowerCase() === email.toLowerCase());
-      if (existing) {
-        return { conflict: true };
-      }
-
-      const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
-      const responder = {
-        id: `responder_${crypto.randomUUID()}`,
-        name,
-        email,
-        organization,
-        phone,
-        passwordHash,
-        createdAt: new Date().toISOString(),
-      };
-      db.responders.push(responder);
-      return { responder };
+    const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
+    // createResponder() relies on the UNIQUE constraint on responders.email
+    // to make this atomic at the database level - two concurrent
+    // registrations with the same email can't both succeed, unlike the
+    // flat-file version's separate existence check before insert needing a
+    // JS-side write queue to avoid the same race.
+    const outcome = await createResponder({
+      id: `responder_${crypto.randomUUID()}`,
+      name,
+      email,
+      organization,
+      phone,
+      passwordHash,
+      createdAt: new Date().toISOString(),
     });
 
     if (outcome.conflict) {
@@ -77,8 +69,7 @@ router.post('/login', async (req, res) => {
       return error(res, 400, 'VALIDATION_ERROR', 'Email and password must be strings.');
     }
 
-    const db = readDB();
-    const responder = db.responders.find((r) => r.email.toLowerCase() === email.toLowerCase());
+    const responder = await getResponderByEmail(email);
     if (!responder) {
       return error(res, 401, 'INVALID_CREDENTIALS', 'Incorrect email or password.');
     }

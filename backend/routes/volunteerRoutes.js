@@ -1,5 +1,5 @@
 const express = require('express');
-const { withStore } = require('../utils/volunteerStore');
+const { upsertVolunteerLocation } = require('../utils/volunteerStore');
 const { success, error } = require('../utils/respond');
 const { isValidCoordinate, isValidPushSubscription } = require('../middleware/sanitize');
 
@@ -23,23 +23,14 @@ router.post('/registered-location', async (req, res) => {
     }
 
     const volunteerId = `responder:${req.responder.id}`;
-
-    const record = await withStore((store) => {
-      let entry = store.volunteers.find((v) => v.id === volunteerId);
-      if (!entry) {
-        entry = { id: volunteerId, role: 'registered' };
-        store.volunteers.push(entry);
-      }
-      entry.role = 'registered';
-      entry.lat = numLat;
-      entry.lng = numLng;
-      entry.lastSeen = new Date().toISOString();
-      entry.trackingEnabled = Boolean(trackingEnabled);
-      entry.pushSubscription = trackingEnabled ? pushSubscription : null;
-      return { id: entry.id, trackingEnabled: entry.trackingEnabled };
+    const record = await upsertVolunteerLocation(volunteerId, 'registered', {
+      lat: numLat,
+      lng: numLng,
+      trackingEnabled,
+      pushSubscription,
     });
 
-    return success(res, record);
+    return success(res, { id: record.id, trackingEnabled: record.trackingEnabled });
   } catch (err) {
     console.error('Error in /api/volunteers/registered-location:', err);
     return error(res, 500, 'INTERNAL_ERROR', 'Something went wrong. Please try again.');

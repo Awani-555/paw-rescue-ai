@@ -1,57 +1,85 @@
-const fs = require('fs');
-const path = require('path');
+const { pool } = require('./pgPool');
 
-// Separate flat-file store from db.json: volunteer location/subscription
-// data churns far more often (updated on every location ping) and has a
-// different lifecycle (pruned on expiry) than reports/cases/responders,
-// so it gets its own file and its own write queue rather than sharing
-// db.json's.
-const STORE_PATH = process.env.VOLUNTEER_STORE_PATH || path.join(__dirname, '..', 'volunteer-locations.json');
-const EMPTY_STORE = { volunteers: [] };
+// Migrations (including the volunteer_locations table) are applied once by
+// utils/db.js#initializeDB() at boot; this is a no-op kept only so
+// server.js's existing initializeStore() call site doesn't need to change.
+function initializeStore() {}
 
-function initializeStore() {
-  if (!fs.existsSync(STORE_PATH)) {
-    fs.writeFileSync(STORE_PATH, JSON.stringify(EMPTY_STORE, null, 2));
-    console.log('Volunteer location store initialized at', STORE_PATH);
-  }
+function rowToVolunteer(row) {
+  if (!row) return null;
+  return {
+    id: row.id,
+    role: row.role,
+    lat: row.lat,
+    lng: row.lng,
+    lastSeen: row.last_seen instanceof Date ? row.last_seen.toISOString() : row.last_seen,
+    trackingEnabled: row.tracking_enabled,
+    pushSubscription: row.push_subscription,
+  };
 }
 
-function readStore() {
-  try {
-    const data = fs.readFileSync(STORE_PATH, 'utf8');
-    return { ...EMPTY_STORE, ...JSON.parse(data) };
-  } catch (err) {
-    console.error('Error reading volunteer store:', err);
-    return { ...EMPTY_STORE };
-  }
-}
-
-function writeStore(data) {
-  try {
-    fs.writeFileSync(STORE_PATH, JSON.stringify(data, null, 2));
-  } catch (err) {
-    console.error('Error writing volunteer store:', err);
-  }
-}
-
-// Same read-mutate-write serialization pattern as utils/db.js, kept as its
-// own independent queue since it guards a different file.
-let writeQueue = Promise.resolve();
-
-function withStore(mutator) {
-  const result = writeQueue.then(async () => {
-    const store = readStore();
-    const returnValue = await mutator(store);
-    writeStore(store);
-    return returnValue;
-  });
-
-  writeQueue = result.then(
-    () => {},
-    () => {}
+// Shared by both Tier 1 (device:<id>, role 'public') and Tier 2
+// (responder:<id>, role 'registered') location opt-in - id/role are always
+// server-derived, never taken from the request body, so a client can't
+// claim a different identity or a stronger role for itself.
+async function upsertVolunteerLocation(id, role, { lat, lng, trackingEnabled, pushSubscription }) {
+  const { rows } = await pool.query(
+    `INSERT INTO volunteer_locations (id, role, lat, lng, last_seen, tracking_enabled, push_subscription)
+     VALUES ($1,$2,$3,$4,now(),$5,$6)
+     ON CONFLICT (id) DO UPDATE SET
+       role = EXCLUDED.role,
+       lat = EXCLUDED.lat,
+       lng = EXCLUDED.lng,
+       last_seen = now(),
+       tracking_enabled = EXCLUDED.tracking_enabled,
+       push_subscription = EXCLUDED.push_subscription
+     RETURNING *`,
+    [id, role, lat, lng, Boolean(trackingEnabled), trackingEnabled ? JSON.stringify(pushSubscription) : null]
   );
-
-  return result;
+  return rowToVolunteer(rows[0]);
 }
 
-module.exports = { STORE_PATH, initializeStore, readStore, writeStore, withStore };
+// Full delete rather than flipping tracking_enabled to false, so an opted-
+// out device leaves no lat/lng or pushSubscription sitting in the table.
+async function deleteVolunteerLocation(id) {
+  const { rowCount } = await pool.query('DELETE FROM volunteer_locations WHERE id = $1', [id]);
+  return rowCount > 0;
+}
+
+// Every volunteer with an active push subscription, for alertNearbyVolunteers
+// to distance-filter in JS (same as the flat-file version did) - a
+// PostGIS-backed radius query would be the "proper" next step but is more
+// than this migration needs to take on.
+async function getTrackedVolunteers() {
+  const { rows } = await pool.query(
+    'SELECT * FROM volunteer_locations WHERE tracking_enabled = true AND push_subscription IS NOT NULL'
+  );
+  return rows.map(rowToVolunteer);
+}
+
+async function deleteVolunteerLocations(ids) {
+  if (ids.length === 0) return;
+  await pool.query('DELETE FROM volunteer_locations WHERE id = ANY($1::text[])', [ids]);
+}
+
+// Passive backstop for Tier 1 (public) devices that never hit the explicit
+// opt-out endpoint - an abandoned tab, an uninstalled PWA, a device that
+// just stopped sending location pings. Scoped to role 'public' only: a
+// registered responder's tracking preference is tied to their account and
+// is expected to persist the way a login-gated setting normally would.
+async function deleteStalePublicVolunteers(staleMs) {
+  const { rowCount } = await pool.query(
+    `DELETE FROM volunteer_locations WHERE role = 'public' AND last_seen < now() - ($1::text)::interval`,
+    [`${staleMs} milliseconds`]
+  );
+  return rowCount;
+}
+
+module.exports = {
+  initializeStore,
+  upsertVolunteerLocation,
+  deleteVolunteerLocation,
+  getTrackedVolunteers,
+  deleteVolunteerLocations,
+  deleteStalePublicVolunteers,
+};

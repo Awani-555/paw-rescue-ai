@@ -1,4 +1,4 @@
-const { withStore } = require('./volunteerStore');
+const { deleteStalePublicVolunteers } = require('./volunteerStore');
 
 const STALE_VOLUNTEER_MS = 24 * 60 * 60 * 1000;
 
@@ -11,17 +11,8 @@ const STALE_VOLUNTEER_MS = 24 * 60 * 60 * 1000;
 // expected to persist across sessions the way a login-gated setting
 // normally would.
 async function purgeStaleVolunteers() {
-  const now = Date.now();
-
-  return withStore((store) => {
-    const before = store.volunteers.length;
-    store.volunteers = store.volunteers.filter((volunteer) => {
-      if (volunteer.role !== 'public') return true;
-      const lastSeenMs = new Date(volunteer.lastSeen || 0).getTime();
-      return now - lastSeenMs < STALE_VOLUNTEER_MS;
-    });
-    return { purgedCount: before - store.volunteers.length };
-  });
+  const purgedCount = await deleteStalePublicVolunteers(STALE_VOLUNTEER_MS);
+  return { purgedCount };
 }
 
 module.exports = { purgeStaleVolunteers, STALE_VOLUNTEER_MS };

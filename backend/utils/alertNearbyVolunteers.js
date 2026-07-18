@@ -1,5 +1,5 @@
 const webpush = require('web-push');
-const { readStore, writeStore } = require('./volunteerStore');
+const { getTrackedVolunteers, deleteVolunteerLocations } = require('./volunteerStore');
 const { calculateDistance } = require('./distance');
 
 function formatSeverity(severity) {
@@ -58,8 +58,8 @@ function buildPayload(caseItem, role) {
   };
 }
 
-function findNearbyVolunteers(store, caseItem) {
-  return store.volunteers.filter((volunteer) => {
+function findNearbyVolunteers(volunteers, caseItem) {
+  return volunteers.filter((volunteer) => {
     if (!volunteer.trackingEnabled || !volunteer.pushSubscription) return false;
     if (typeof volunteer.lat !== 'number' || typeof volunteer.lng !== 'number') return false;
 
@@ -77,8 +77,8 @@ async function alertNearbyVolunteers(caseItem) {
     return { notified: 0, expired: 0 };
   }
 
-  const store = readStore();
-  const nearby = findNearbyVolunteers(store, caseItem);
+  const volunteers = await getTrackedVolunteers();
+  const nearby = findNearbyVolunteers(volunteers, caseItem);
 
   let notified = 0;
   const expiredIds = [];
@@ -103,9 +103,7 @@ async function alertNearbyVolunteers(caseItem) {
   );
 
   if (expiredIds.length > 0) {
-    const fresh = readStore();
-    fresh.volunteers = fresh.volunteers.filter((v) => !expiredIds.includes(v.id));
-    writeStore(fresh);
+    await deleteVolunteerLocations(expiredIds);
   }
 
   return { notified, expired: expiredIds.length };
