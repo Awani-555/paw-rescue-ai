@@ -12,10 +12,11 @@ const { calculateDistance, loadFacilities } = require('./utils/distance');
 const { alertNearbyVolunteers } = require('./utils/alertNearbyVolunteers');
 const { purgeExpiredHelpers } = require('./utils/purgeExpiredHelpers');
 const { purgeStaleVolunteers } = require('./utils/purgeStaleVolunteers');
+const { purgeOldResolvedCases } = require('./utils/purgeOldResolvedCases');
 const { encrypt, decrypt } = require('./utils/encryption');
 const { issueCallToken, consumeCallToken } = require('./utils/callTokens');
 const { success, error } = require('./utils/respond');
-const { sanitizeBody, isValidCoordinate } = require('./middleware/sanitize');
+const { sanitizeBody, isValidCoordinate, isValidPushSubscription } = require('./middleware/sanitize');
 const requestLogger = require('./middleware/requestLogger');
 const { requireAuth } = require('./middleware/auth');
 const authRoutes = require('./routes/authRoutes');
@@ -25,6 +26,26 @@ const volunteerRoutes = require('./routes/volunteerRoutes');
 const app = express();
 const PORT = process.env.PORT || 5000;
 const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://localhost:8001';
+const MAX_IMAGE_BASE64_CHARS = 15 * 1024 * 1024;
+// Shared fallback origin for any report/case that arrives without a real
+// GPS fix - kept as one named constant rather than the same two numbers
+// copy-pasted across frontend and backend (it used to be).
+const DEFAULT_LOCATION = { lat: 26.8467, lng: 80.9462 };
+
+// Shared secret with ai-service (see ai-service/main.py's
+// require_internal_token) so that service can't be called by anyone except
+// this backend. Required in the same fail-fast way as JWT_SECRET: booting
+// with no token configured would either send an empty header (indistinguishable
+// from a misconfigured deployment) or silently skip auth, neither of which
+// should happen quietly.
+const AI_SERVICE_TOKEN = process.env.AI_SERVICE_TOKEN;
+if (!AI_SERVICE_TOKEN) {
+  throw new Error(
+    'AI_SERVICE_TOKEN environment variable is required. Generate one with: ' +
+      "node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\" " +
+      'and set the same value as INTERNAL_SERVICE_TOKEN in ai-service/.env.'
+  );
+}
 
 // Middleware
 app.use(helmet());
@@ -63,7 +84,7 @@ const anonymousActionLimiter = rateLimit({
 // POST /api/report - Accept image + notes + location, forward to AI, save result + create a case
 app.post('/api/report', anonymousActionLimiter, async (req, res) => {
   try {
-    const { image, notes, location, lat, lng } = req.body || {};
+    const { image, notes, location, lat, lng, locationSource } = req.body || {};
 
     if (!image) {
       return error(res, 400, 'VALIDATION_ERROR', 'Image is required');
@@ -71,12 +92,21 @@ app.post('/api/report', anonymousActionLimiter, async (req, res) => {
     if (typeof image !== 'string') {
       return error(res, 400, 'VALIDATION_ERROR', 'Invalid image format');
     }
-    if (image.length > 15 * 1024 * 1024) {
-      return error(res, 400, 'VALIDATION_ERROR', 'Image too large (max 10MB)');
+    if (image.length > MAX_IMAGE_BASE64_CHARS) {
+      return error(res, 400, 'VALIDATION_ERROR', 'Image too large (max 15MB)');
     }
 
-    const userLat = isValidCoordinate(Number(lat), Number(lng)) ? Number(lat) : 26.8467;
-    const userLng = isValidCoordinate(Number(lat), Number(lng)) ? Number(lng) : 80.9462;
+    const hasValidCoords = isValidCoordinate(Number(lat), Number(lng));
+    // 'gps' is the only locationSource the frontend sends when
+    // navigator.geolocation actually succeeded (see useGeolocation.js's
+    // 'granted' status); anything else means lat/lng are a hardcoded
+    // city-center default, not the reporter's real location - trusting
+    // that for nearby-volunteer dispatch would alert the wrong people
+    // entirely rather than just being imprecise, so it's tracked
+    // separately from "do we have a number in range at all".
+    const hasGpsLocation = hasValidCoords && locationSource === 'gps';
+    const userLat = hasValidCoords ? Number(lat) : DEFAULT_LOCATION.lat;
+    const userLng = hasValidCoords ? Number(lng) : DEFAULT_LOCATION.lng;
 
     const facilities = loadFacilities();
     const nearestFacilities = facilities
@@ -89,24 +119,35 @@ app.post('/api/report', anonymousActionLimiter, async (req, res) => {
       const aiResponse = await axios.post(
         `${AI_SERVICE_URL}/analyze`,
         { image },
-        { timeout: 15000 }
+        { timeout: 15000, headers: { 'X-Internal-Token': AI_SERVICE_TOKEN } }
       );
       aiResult = aiResponse.data;
     } catch (aiErr) {
+      console.error('AI service call failed, falling back to Urgent:', aiErr.message);
+      // An unreachable/failed AI call is an unknown, not a reassurance:
+      // defaulting to "Mild" here would be the exact false-negative the
+      // severity signal exists to avoid, so an assessment that didn't
+      // actually run leans toward "Urgent" instead (mirrors the same
+      // fallback in ai-service/main.py's analyze_animal).
       aiResult = {
         species: 'Unknown',
-        severity: 'Mild',
+        severity: 'Urgent',
         injuries: ['Unable to analyze, AI service unavailable'],
         confidence: 0.5,
         first_aid: ['Please consult a veterinarian for professional assessment'],
         detected_label: null,
-        severity_note: 'AI analysis was unavailable for this report. Severity was not assessed, use your own judgment and consult a vet.',
+        severity_note:
+          'AI analysis was unavailable for this report. Severity was not assessed - use your own judgment and treat it as urgent if unsure.',
       };
     }
 
     aiResult.nearestFacilities = nearestFacilities;
 
-    const reportId = `report_${Date.now()}`;
+    // crypto.randomUUID() rather than Date.now(): two reports submitted in
+    // the same millisecond (a real possibility under concurrent load, not
+    // just a load test) would otherwise get identical ids, silently
+    // colliding in every downstream lookup keyed on report/case id.
+    const reportId = `report_${crypto.randomUUID()}`;
     const timestamp = new Date().toISOString();
 
     const report = {
@@ -117,6 +158,8 @@ app.post('/api/report', anonymousActionLimiter, async (req, res) => {
       image: `data:image/jpeg;base64,${image}`,
       lat: userLat,
       lng: userLng,
+      hasGpsLocation,
+      nearbyAlertsSkipped: !hasGpsLocation,
       result: aiResult,
     };
 
@@ -130,6 +173,7 @@ app.post('/api/report', anonymousActionLimiter, async (req, res) => {
       notes: report.notes,
       lat: userLat,
       lng: userLng,
+      hasGpsLocation,
       timestamp,
       status: 'open',
       respondedBy: null,
@@ -150,9 +194,16 @@ app.post('/api/report', anonymousActionLimiter, async (req, res) => {
     // the reporter's submission. alertNearbyVolunteers() already catches
     // its own errors, but this is deliberately not awaited so a slow push
     // fan-out (many volunteers) doesn't add latency to the report response.
-    alertNearbyVolunteers(newCase).catch((err) => {
-      console.error('alertNearbyVolunteers failed:', err);
-    });
+    // Skipped entirely without a real GPS fix: alerting "nearby" volunteers
+    // using the hardcoded default location would notify people near that
+    // default city instead of near the actual animal, which is worse than
+    // not alerting at all. The case is still fully visible to registered
+    // responders via the normal case feed either way.
+    if (hasGpsLocation) {
+      alertNearbyVolunteers(newCase).catch((err) => {
+        console.error('alertNearbyVolunteers failed:', err);
+      });
+    }
 
     return success(res, report, 201);
   } catch (err) {
@@ -352,10 +403,7 @@ app.post('/api/volunteers/public-location', anonymousActionLimiter, async (req, 
     if (!isValidCoordinate(numLat, numLng)) {
       return error(res, 400, 'VALIDATION_ERROR', 'A valid lat/lng is required.');
     }
-    if (
-      trackingEnabled &&
-      !(pushSubscription && typeof pushSubscription === 'object' && typeof pushSubscription.endpoint === 'string')
-    ) {
+    if (trackingEnabled && !isValidPushSubscription(pushSubscription)) {
       return error(res, 400, 'VALIDATION_ERROR', 'A valid push subscription is required to enable tracking.');
     }
 
@@ -417,9 +465,19 @@ app.get('/health', (req, res) => {
 
 // Global error handler: keeps every response (including body-parser
 // failures like oversized payloads) in the standard { success, error } shape.
+// Express only recognizes this as error-handling middleware because it has
+// exactly 4 parameters; `next` is required by that arity check even though
+// it's never called.
+// eslint-disable-next-line no-unused-vars
 app.use((err, req, res, next) => {
   if (err.type === 'entity.too.large') {
     return error(res, 413, 'PAYLOAD_TOO_LARGE', 'Request body too large.');
+  }
+  // express.json() throws a SyntaxError for a malformed body - that's a
+  // client mistake, not a server fault, and shouldn't be a 500 (which
+  // would also wrongly flag it as a real outage in logs/monitoring).
+  if (err.type === 'entity.parse.failed' || err instanceof SyntaxError) {
+    return error(res, 400, 'VALIDATION_ERROR', 'Request body is not valid JSON.');
   }
   console.error('Unhandled error:', err);
   return error(res, 500, 'INTERNAL_ERROR', 'Our servers had an issue. Please try again.');
@@ -440,18 +498,38 @@ if (require.main === module) {
   // (caseRoutes.js): catches helper info for cases that never get
   // explicitly resolved. Every 30 minutes is frequent enough that no
   // entry lives meaningfully past the 48h retention window.
-  const purgeInterval = setInterval(() => {
-    purgeExpiredHelpers().catch((err) => console.error('purgeExpiredHelpers failed:', err));
-  }, 30 * 60 * 1000);
+  const purgeInterval = setInterval(
+    () => {
+      purgeExpiredHelpers().catch((err) => console.error('purgeExpiredHelpers failed:', err));
+    },
+    30 * 60 * 1000
+  );
   purgeInterval.unref();
 
   // Passive backstop for Tier 1 (public) location tracking: catches
   // abandoned tabs and uninstalled PWAs that never hit the explicit
   // opt-out endpoint. See utils/purgeStaleVolunteers.js.
-  const staleVolunteerInterval = setInterval(() => {
-    purgeStaleVolunteers().catch((err) => console.error('purgeStaleVolunteers failed:', err));
-  }, 30 * 60 * 1000);
+  const staleVolunteerInterval = setInterval(
+    () => {
+      purgeStaleVolunteers().catch((err) => console.error('purgeStaleVolunteers failed:', err));
+    },
+    30 * 60 * 1000
+  );
   staleVolunteerInterval.unref();
+
+  // db.cases has no other size cap (unlike db.reports) and every case
+  // carries a full base64 image, so this is what actually keeps db.json
+  // from growing forever. Only removes cases that are both resolved and
+  // past the retention window - an open/responding case is never touched
+  // regardless of age. Runs once daily since a 30-day retention window
+  // doesn't need 30-minute granularity.
+  const resolvedCaseInterval = setInterval(
+    () => {
+      purgeOldResolvedCases().catch((err) => console.error('purgeOldResolvedCases failed:', err));
+    },
+    24 * 60 * 60 * 1000
+  );
+  resolvedCaseInterval.unref();
 
   process.on('SIGTERM', () => {
     console.log('Server shutting down...');

@@ -1,20 +1,9 @@
 const express = require('express');
 const { withStore } = require('../utils/volunteerStore');
 const { success, error } = require('../utils/respond');
-const { isValidCoordinate } = require('../middleware/sanitize');
+const { isValidCoordinate, isValidPushSubscription } = require('../middleware/sanitize');
 
 const router = express.Router();
-
-function isValidPushSubscription(sub) {
-  return (
-    sub &&
-    typeof sub === 'object' &&
-    typeof sub.endpoint === 'string' &&
-    sub.keys &&
-    typeof sub.keys.p256dh === 'string' &&
-    typeof sub.keys.auth === 'string'
-  );
-}
 
 // Tier 2: registered responders who are logged in and have opted into
 // location tracking on the dashboard. Identity comes from the JWT, never

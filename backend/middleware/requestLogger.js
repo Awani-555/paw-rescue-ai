@@ -23,9 +23,14 @@ function requestLogger(req, res, next) {
 
     console.log(line.trim());
 
+    // Async, fire-and-forget: appendFileSync here would block Node's
+    // single event loop thread on disk I/O for every request that
+    // finishes, which is the request-handling hot path itself.
     try {
       ensureLogDir();
-      fs.appendFileSync(LOG_PATH, line);
+      fs.appendFile(LOG_PATH, line, (err) => {
+        if (err) console.error('Failed to write request log:', err.message);
+      });
     } catch (err) {
       console.error('Failed to write request log:', err.message);
     }

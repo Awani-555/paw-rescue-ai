@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const { readDB, withDB } = require('../utils/db');
@@ -41,7 +42,7 @@ router.post('/register', async (req, res) => {
 
       const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
       const responder = {
-        id: `responder_${Date.now()}`,
+        id: `responder_${crypto.randomUUID()}`,
         name,
         email,
         organization,

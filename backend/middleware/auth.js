@@ -22,7 +22,7 @@ function requireAuth(req, res, next) {
   try {
     req.responder = jwt.verify(token, JWT_SECRET);
     next();
-  } catch (err) {
+  } catch {
     return error(res, 401, 'INVALID_TOKEN', 'Your session has expired. Please log in again.');
   }
 }

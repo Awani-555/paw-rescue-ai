@@ -40,4 +40,21 @@ function isValidCoordinate(lat, lng) {
   );
 }
 
-module.exports = { sanitizeBody, isValidCoordinate };
+// Same shape is required for both Tier 2 (registered responders,
+// routes/volunteerRoutes.js) and Tier 1 (anonymous public, server.js)
+// opt-in - this used to be two separately hand-rolled checks that had
+// drifted apart, with the anonymous path's version silently accepting a
+// subscription missing its `keys`. One shared check means they can't
+// drift again.
+function isValidPushSubscription(sub) {
+  return (
+    sub &&
+    typeof sub === 'object' &&
+    typeof sub.endpoint === 'string' &&
+    sub.keys &&
+    typeof sub.keys.p256dh === 'string' &&
+    typeof sub.keys.auth === 'string'
+  );
+}
+
+module.exports = { sanitizeBody, isValidCoordinate, isValidPushSubscription };
