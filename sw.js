@@ -71,3 +71,49 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(cacheFirst(event.request));
   }
 });
+
+// Two alert tiers share this one handler. Tier 2 (registered responders)
+// payloads carry detail: 'full' with species/severity; Tier 1 (anonymous
+// public opt-in) payloads carry detail: 'soft' with nothing but a case id
+// and a generic message, that filtering already happened server-side in
+// alertNearbyVolunteers.js, this handler just renders whatever it receives.
+self.addEventListener('push', (event) => {
+  if (!event.data) return;
+
+  let payload;
+  try {
+    payload = event.data.json();
+  } catch (err) {
+    payload = { title: 'PawRescue AI', body: event.data.text() };
+  }
+
+  const title = payload.title || 'PawRescue AI';
+  const options = {
+    body: payload.body || '',
+    tag: payload.caseId || undefined,
+    data: { url: payload.url || './' },
+    icon: './icons/icon-192.png',
+    badge: './icons/icon-192.png',
+  };
+
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const targetUrl = new URL(event.notification.data?.url || './', self.location.origin).href;
+
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      for (const client of clientList) {
+        if ('focus' in client) {
+          client.postMessage({ type: 'pawrescue-notification-click', url: targetUrl });
+          return client.focus();
+        }
+      }
+      if (self.clients.openWindow) {
+        return self.clients.openWindow(targetUrl);
+      }
+    })
+  );
+});
